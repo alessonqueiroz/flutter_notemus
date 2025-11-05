@@ -40,6 +40,11 @@ Flutter Notemus provides a comprehensive solution for rendering high-quality mus
 - **Staff Position Calculator**: Unified pitch-to-position conversion
 - **Collision Detection**: Smart spacing and layout
 - **Theme System**: Customizable colors and styles
+- **Measure Validation**: Automatic music theory-based validation
+  - Prevents overfilled measures
+  - Real-time capacity checking
+  - Detailed error messages
+  - Tuplet-aware calculations
 
 ### 📊 Format Support
 - **JSON**: Import and export music data
@@ -111,6 +116,160 @@ class SimpleMusicExample extends StatelessWidget {
   }
 }
 ```
+
+---
+
+## ⚠️ Measure Validation System
+
+**IMPORTANT:** Flutter Notemus includes a **strict measure validation system** that enforces musical correctness based on music theory rules.
+
+### 🛡️ Automatic Validation
+
+When you add notes to a measure with a `TimeSignature`, the system automatically validates that the total duration doesn't exceed the measure's capacity:
+
+```dart
+final measure = Measure(
+  inheritedTimeSignature: TimeSignature(numerator: 4, denominator: 4),
+);
+
+// ✅ VALID: 4 quarter notes = 1.0 units (fits in 4/4)
+measure.add(Note(pitch: Pitch(step: 'C', octave: 4), 
+                 duration: Duration(DurationType.quarter))); // 0.25
+measure.add(Note(pitch: Pitch(step: 'D', octave: 4), 
+                 duration: Duration(DurationType.quarter))); // 0.25
+measure.add(Note(pitch: Pitch(step: 'E', octave: 4), 
+                 duration: Duration(DurationType.quarter))); // 0.25
+measure.add(Note(pitch: Pitch(step: 'F', octave: 4), 
+                 duration: Duration(DurationType.quarter))); // 0.25
+```
+
+### ❌ Validation Errors
+
+**If you try to add more notes than the measure can hold, an exception will be thrown:**
+
+```dart
+final measure = Measure(
+  inheritedTimeSignature: TimeSignature(numerator: 4, denominator: 4),
+);
+
+measure.add(Note(pitch: Pitch(step: 'C', octave: 4), 
+                 duration: Duration(DurationType.half, dots: 1))); // 0.75
+measure.add(Note(pitch: Pitch(step: 'D', octave: 4), 
+                 duration: Duration(DurationType.eighth))); // 0.125
+
+// ❌ ERROR: This will throw MeasureCapacityException!
+measure.add(Note(pitch: Pitch(step: 'E', octave: 4), 
+                 duration: Duration(DurationType.whole))); // 1.0
+
+// Total would be: 0.75 + 0.125 + 1.0 = 1.875 units
+// But 4/4 capacity is only 1.0 units!
+// EXCESS: 0.875 units ← BLOCKED!
+```
+
+**Error Message:**
+```
+MeasureCapacityException: Não é possível adicionar Note ao compasso!
+Compasso 4/4 (capacidade: 1 unidades)
+Valor atual: 0.875 unidades
+Tentando adicionar: 1 unidades
+Total seria: 1.875 unidades
+EXCESSO: 0.8750 unidades
+❌ OPERAÇÃO BLOQUEADA - Remova figuras ou crie novo compasso!
+```
+
+### 📊 How Duration Works
+
+The system calculates durations based on **music theory**:
+
+| Figure | Base Value | With Single Dot | With Double Dot |
+|--------|------------|----------------|-----------------|
+| Whole (Semibreve) | 1.0 | 1.5 | 1.75 |
+| Half (Mínima) | 0.5 | 0.75 | 0.875 |
+| Quarter (Semínima) | 0.25 | 0.375 | 0.4375 |
+| Eighth (Colcheia) | 0.125 | 0.1875 | 0.21875 |
+| Sixteenth (Semicolcheia) | 0.0625 | 0.09375 | 0.109375 |
+
+**Formula for dotted notes:**
+- Single dot: `duration × 1.5`
+- Double dot: `duration × 1.75`
+- Multiple dots: `duration × (2 - 2^(-dots))`
+
+### 🎯 Tuplets Support
+
+Tuplets are automatically calculated with correct proportions:
+
+```dart
+// Triplet: 3 notes in the time of 2
+Tuplet(
+  actualNotes: 3,
+  normalNotes: 2,
+  elements: [
+    Note(duration: Duration(DurationType.eighth)), // 0.125
+    Note(duration: Duration(DurationType.eighth)), // 0.125
+    Note(duration: Duration(DurationType.eighth)), // 0.125
+  ],
+) // Total: (0.125 × 3) × (2/3) = 0.25 units
+```
+
+### 🔄 TimeSignature Inheritance
+
+Measures without explicit `TimeSignature` can inherit from previous measures:
+
+```dart
+final measure1 = Measure();
+measure1.add(TimeSignature(numerator: 4, denominator: 4));
+// ... add notes
+
+final measure2 = Measure(
+  inheritedTimeSignature: TimeSignature(numerator: 4, denominator: 4),
+);
+// measure2 inherits 4/4 from measure1 for validation
+```
+
+### ✅ Best Practices
+
+1. **Always set TimeSignature** - Either in the measure or as inherited
+2. **Check remaining space** - Use `measure.remainingValue` before adding notes
+3. **Use try-catch** - Wrap `measure.add()` in try-catch for user input:
+
+```dart
+try {
+  measure.add(Note(
+    pitch: Pitch(step: 'C', octave: 4),
+    duration: Duration(DurationType.quarter),
+  ));
+} on MeasureCapacityException catch (e) {
+  print('Cannot add note: ${e.message}');
+  // Show error to user or handle gracefully
+}
+```
+
+4. **Validate before rendering** - The `MeasureValidator` provides detailed reports:
+
+```dart
+final validation = MeasureValidator.validateWithTimeSignature(
+  measure,
+  timeSignature,
+);
+
+if (!validation.isValid) {
+  print('Invalid measure: ${validation.errors}');
+  print('Expected: ${validation.expectedCapacity}');
+  print('Actual: ${validation.actualDuration}');
+}
+```
+
+### 🎵 Musical Correctness
+
+This validation system ensures your notation follows **professional music engraving standards**:
+
+- ✅ **No overfilled measures** - Prevents rhythmic errors
+- ✅ **Clear error messages** - Shows exactly what's wrong
+- ✅ **Theory-based** - Follows music theory rules
+- ✅ **Preventive** - Catches errors BEFORE rendering
+- ✅ **Tuplet-aware** - Correctly handles complex rhythms
+
+**Remember:** The validation is your friend! It prevents creating invalid musical notation that would confuse performers.
 
 ---
 
@@ -266,6 +425,7 @@ flutter run
 - ✅ Specialized renderers following SRP
 - ✅ Staff position calculator
 - ✅ Collision detection system
+- ✅ **Automatic measure validation system**
 - ✅ Theme system
 - ✅ JSON parser
 - ✅ Comprehensive examples
