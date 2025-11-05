@@ -14,6 +14,29 @@ class FlagRenderer extends BaseGlyphRenderer {
   final MusicScoreTheme theme;
   final SMuFLPositioningEngine positioningEngine;
 
+  // ========== AJUSTES PARA BANDEIROLA PARA CIMA (stemUp = true) ==========
+  /// Ajuste visual empírico em X para bandeirola PARA CIMA
+  /// Valor determinado através de análise visual comparativa.
+  /// TODO: Investigar se deve ser proporcional ao staffSpace
+  static const double flagUpXOffset = 0.7; // pixels
+
+  /// Ajuste visual empírico em Y para bandeirola PARA CIMA
+  /// Valor determinado através de análise visual comparativa.
+  /// TODO: Investigar se deve ser proporcional ao staffSpace
+  static const double flagUpYOffset =
+      0; // pixels (negativo porque Y+ é para baixo)
+
+  // ========== AJUSTES PARA BANDEIROLA PARA BAIXO (stemUp = false) ==========
+  /// Ajuste visual empírico em X para bandeirola PARA BAIXO
+  /// Valor determinado através de análise visual comparativa.
+  /// TODO: Investigar se deve ser proporcional ao staffSpace
+  static const double flagDownXOffset = 0.7; // pixels (ajustar se necessário)
+
+  /// Ajuste visual empírico em Y para bandeirola PARA BAIXO
+  /// Valor determinado através de análise visual comparativa.
+  /// TODO: Investigar se deve ser proporcional ao staffSpace
+  static const double flagDownYOffset = 0.5; // pixels (ajustar se necessário)
+
   FlagRenderer({
     required super.metadata,
     required this.theme,
@@ -47,9 +70,15 @@ class FlagRenderer extends BaseGlyphRenderer {
       -flagAnchor.dy * coordinates.staffSpace, // INVERTER Y!
     );
 
-    // Calcular posição da bandeirola
-    final flagX = stemEnd.dx - flagAnchorPixels.dx;
-    final flagY = stemEnd.dy - flagAnchorPixels.dy;
+    // Calcular posição da bandeirola com ajustes visuais (diferentes para cima/baixo)
+    final xOffset = stemUp ? flagUpXOffset : flagDownXOffset;
+    final yOffset = stemUp ? flagUpYOffset : flagDownYOffset;
+
+    final flagX = stemEnd.dx - flagAnchorPixels.dx - xOffset;
+    final flagY =
+        stemEnd.dy -
+        flagAnchorPixels.dy -
+        yOffset; // Nota: yOffset já é negativo
 
     // Desenhar bandeirola
     drawGlyphWithBBox(
