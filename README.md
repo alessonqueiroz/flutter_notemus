@@ -465,4 +465,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Flutter Notemus** - Professional music notation for Flutter 🎵
 
-Made with ♥ by the Flutter community
+Developed with dedication by Alesson Lucas Oliveira de Queiroz
