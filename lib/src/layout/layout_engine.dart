@@ -9,7 +9,7 @@ import '../smufl/smufl_metadata_loader.dart';
 import 'beam_grouper.dart';
 import 'bounding_box.dart';
 import 'measure_validator.dart';
-import 'spacing/spacing.dart'; // Sistema de Espaçamento Inteligente
+import 'spacing/spacing.dart' as spacing; // Sistema de Espaçamento Inteligente
 
 class PositionedElement {
   final MusicalElement element;
@@ -75,6 +75,18 @@ class LayoutCursor {
     advance(LayoutEngine.barlineSeparation * staffSpace);
   }
 
+  /// Adiciona barra dupla final (fim da peça)
+  void addDoubleBarline(List<PositionedElement> elements) {
+    elements.add(
+      PositionedElement(
+        Barline(type: BarlineType.final_),
+        Offset(_currentX, _currentY),
+        system: _currentSystem,
+      ),
+    );
+    advance(LayoutEngine.barlineSeparation * staffSpace);
+  }
+
   void endMeasure() {
     _isFirstMeasureInSystem = false;
     // Padding agora aplicado ANTES da barline no layout principal
@@ -106,7 +118,7 @@ class LayoutEngine {
   final SmuflMetadata? metadata;
 
   // Sistema de Espaçamento Inteligente
-  late final IntelligentSpacingEngine _spacingEngine;
+  late final spacing.IntelligentSpacingEngine _spacingEngine;
 
   // Configuração de validação (silenciosa por padrão)
   final bool verboseValidation;
@@ -128,6 +140,9 @@ class LayoutEngine {
   static const double noteMinSpacing = 3.5; // Base para espaçamento entre notas
   static const double measureEndPadding =
       3.0; // Espaço adequado ANTES da barline (agora corrigido!)
+  
+  // QUEBRA DE LINHA INTELIGENTE
+  static const int measuresPerSystem = 4; // Compassos por linha
 
   LayoutEngine(
     this.staff, {
@@ -135,11 +150,11 @@ class LayoutEngine {
     this.staffSpace = 12.0,
     this.metadata,
     this.verboseValidation = false, // Silencioso por padrão
-    SpacingPreferences? spacingPreferences,
+    spacing.SpacingPreferences? spacingPreferences,
   }) {
     // Inicializar motor de espaçamento
-    _spacingEngine = IntelligentSpacingEngine(
-      preferences: spacingPreferences ?? SpacingPreferences.normal,
+    _spacingEngine = spacing.IntelligentSpacingEngine(
+      preferences: spacingPreferences ?? spacing.SpacingPreferences.normal,
     );
     _spacingEngine.initializeOpticalCompensator(staffSpace);
   }
@@ -181,6 +196,10 @@ class LayoutEngine {
     );
 
     final List<PositionedElement> positionedElements = [];
+    
+    // Armazenar compassos por sistema para justificação
+    final systemMeasures = <int, List<int>>{};
+    final measureStartIndices = <int, int>{};
 
     // Sistema de herança de TimeSignature
     TimeSignature? currentTimeSignature;
@@ -193,6 +212,7 @@ class LayoutEngine {
       final measure = staff.measures[i];
       final isFirst = cursor.isFirstMeasureInSystem;
       final isLast = i == staff.measures.length - 1;
+      final isLastInSystem = (i + 1) % measuresPerSystem == 0 && !isLast;
 
       // HERANÇA DE TIME SIGNATURE: Procurar no compasso atual
       TimeSignature? measureTimeSignature;
@@ -239,16 +259,46 @@ class LayoutEngine {
 
       final measureWidth = _calculateMeasureWidthCursor(measure, isFirst);
 
-      if (cursor.needsSystemBreak(measureWidth)) {
+      // QUEBRA INTELIGENTE: A cada N compassos OU se não couber
+      if (!isFirst && (isLastInSystem || cursor.needsSystemBreak(measureWidth))) {
         cursor.startNewSystem();
       }
 
-      _layoutMeasureCursor(measure, cursor, positionedElements, isFirst);
+      // Guardar índice inicial do compasso para justificação
+      final measureStartIndex = positionedElements.length;
+      measureStartIndices[i] = measureStartIndex;
+      
+      // Registrar compasso no sistema
+      final currentSystem = cursor.currentSystem;
+      systemMeasures[currentSystem] = systemMeasures[currentSystem] ?? [];
+      systemMeasures[currentSystem]!.add(i);
+      
+      _layoutMeasureCursor(measure, cursor, positionedElements, cursor.isFirstMeasureInSystem);
 
-      // CORREÇÃO: Adicionar padding ANTES da barline, não depois!
-      if (!isLast) {
+      // Verificar se PRÓXIMO compasso começa com barline (ex: repeat)
+      final nextMeasure = (i < staff.measures.length - 1) ? staff.measures[i + 1] : null;
+      final nextMeasureStartsWithBarline = nextMeasure != null && 
+          nextMeasure.elements.isNotEmpty && 
+          nextMeasure.elements.first is Barline;
+      
+      // Adicionar barline apropriada SOMENTE se próximo compasso não começar com uma
+      if (!nextMeasureStartsWithBarline) {
+        if (isLast) {
+          // BARRA DUPLA FINAL
+          cursor.advance(measureEndPadding * staffSpace);
+          cursor.addDoubleBarline(positionedElements);
+        } else if (isLastInSystem) {
+          // BARLINE NORMAL no final do sistema
+          cursor.advance(measureEndPadding * staffSpace);
+          cursor.addBarline(positionedElements);
+        } else {
+          // BARLINE NORMAL entre compassos
+          cursor.advance(measureEndPadding * staffSpace);
+          cursor.addBarline(positionedElements);
+        }
+      } else {
+        // Próximo compasso começa com barline - apenas adicionar padding
         cursor.advance(measureEndPadding * staffSpace);
-        cursor.addBarline(positionedElements);
       }
 
       cursor.endMeasure();
@@ -259,7 +309,61 @@ class LayoutEngine {
       print('Validacao: $validMeasures validos, $invalidMeasures invalidos');
     }
 
+    // JUSTIFICAÇÃO HORIZONTAL: Esticar compassos para preencher largura
+    _justifyHorizontally(positionedElements, systemMeasures);
+
     return positionedElements;
+  }
+
+  /// Justifica horizontalmente os compassos para preencher a largura disponível
+  void _justifyHorizontally(
+    List<PositionedElement> elements,
+    Map<int, List<int>> systemMeasures,
+  ) {
+    final usableWidth = availableWidth - (systemMargin * staffSpace * 2);
+    
+    for (final entry in systemMeasures.entries) {
+      final system = entry.key;
+      final measures = entry.value;
+      
+      if (measures.isEmpty) continue;
+      
+      // Encontrar X mínimo e máximo dos elementos neste sistema
+      double minX = double.infinity;
+      double maxX = 0;
+      
+      for (final positioned in elements) {
+        if (positioned.system == system) {
+          if (positioned.position.dx < minX) minX = positioned.position.dx;
+          if (positioned.position.dx > maxX) maxX = positioned.position.dx;
+        }
+      }
+      
+      final usedWidth = maxX - minX;
+      final extraSpace = usableWidth - usedWidth;
+      
+      // Se há espaço extra, distribuir proporcionalmente
+      if (extraSpace > 0 && measures.length > 1) {
+        // Ajustar posições dos elementos após cada compasso
+        for (int i = 0; i < elements.length; i++) {
+          final positioned = elements[i];
+          if (positioned.system != system) continue;
+          
+          // Calcular proporção de posição no sistema (simplificado)
+          final positionRatio = (maxX - minX) > 0 
+              ? (positioned.position.dx - minX) / (maxX - minX)
+              : 0.0;
+          
+          // Aplicar offset proporcional baseado na posição
+          final offset = extraSpace * positionRatio;
+          elements[i] = PositionedElement(
+            positioned.element,
+            Offset(positioned.position.dx + offset, positioned.position.dy),
+            system: positioned.system,
+          );
+        }
+      }
+    }
   }
 
   double _calculateMeasureWidthCursor(Measure measure, bool isFirstInSystem) {
@@ -505,7 +609,15 @@ class LayoutEngine {
 
     if (element is Dynamic) return 2.0 * staffSpace;
     if (element is Ornament) return 1.0 * staffSpace;
-    if (element is Tuplet) return 3.0 * staffSpace;
+    
+    if (element is Tuplet) {
+      // CRÍTICO: Calcular largura baseada nas notas INTERNAS do tuplet
+      final numElements = element.elements.length;
+      final elementSpacing = staffSpace * 2.5; // Mesma do TupletRenderer
+      final totalWidth = numElements * elementSpacing;
+      return totalWidth;
+    }
+    
     if (element is TempoMark)
       return 0.0; // TempoMark renderizado acima, sem largura
 

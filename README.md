@@ -33,6 +33,9 @@ Flutter Notemus provides a comprehensive solution for rendering high-quality mus
 - **Tuplets**: Triplets, quintuplets, septuplets, etc.
 - **Slurs & Ties**: Curved connectors between notes
 - **Ledger Lines**: Automatic for notes outside the staff
+- **Barlines**: Single, double, final, and repeat signs using SMuFL glyphs
+- **Breath Marks**: Comma, tick, and caesura marks
+- **Repeat Signs**: Forward (`:||`), backward (`||:`), and both-sided (`:||:`) ritornelos
 
 ### 🏗️ Architecture
 - **Single Responsibility Principle**: Specialized renderers for each element
@@ -45,10 +48,127 @@ Flutter Notemus provides a comprehensive solution for rendering high-quality mus
   - Real-time capacity checking
   - Detailed error messages
   - Tuplet-aware calculations
+- **Intelligent Layout Engine**:
+  - Horizontal justification (stretches measures to fill available width)
+  - Automatic line breaks every 4 measures
+  - Staff line optimization (no empty space)
+  - Professional measure spacing
 
 ### 📊 Format Support
 - **JSON**: Import and export music data
 - **Programmatic API**: Build music programmatically
+
+---
+
+## ✨ Recent Improvements (2025-11-05)
+
+### 🎵 Professional Barlines with SMuFL Glyphs
+
+All barlines now use **official SMuFL glyphs** from the Bravura font for perfect typographic accuracy:
+
+- **Single barline** (`barlineSingle` U+E030)
+- **Double barline** (`barlineDouble` U+E031)  
+- **Final barline** (`barlineFinal` U+E032) - fina + grossa
+- **Repeat forward** (`repeatLeft` U+E040) - `:║▌`
+- **Repeat backward** (`repeatRight` U+E041) - `▌║:`
+- **Repeat both** (`repeatLeftRight` U+E042) - `:▌▌:`
+
+```dart
+// Simple usage - barlines are automatic!
+measure9.add(Barline(type: BarlineType.repeatForward));
+measure16.add(Barline(type: BarlineType.final_));
+```
+
+### 📏 Horizontal Justification
+
+Measures now **stretch proportionally** to fill available width, matching professional engraving standards:
+
+```
+BEFORE: [M1][M2][M3][M4]___________
+                        ↑ wasted space
+
+AFTER:  [ M1 ][ M2 ][ M3 ][ M4 ]
+        ←──── full width ────→
+```
+
+Algorithm distributes extra space proportionally based on element positions.
+
+### 🔄 Repeat Signs (Ritornelo)
+
+Full support for musical repeat signs with perfect positioning:
+
+```dart
+// Start of repeated section
+measure.add(Barline(type: BarlineType.repeatForward));
+
+// End of repeated section  
+measure.add(Barline(type: BarlineType.repeatBackward));
+```
+
+### 💨 Breath Marks
+
+Respiratory marks for wind and vocal music:
+
+```dart
+// Add breath mark (comma)
+measure.add(Breath(type: BreathType.comma));
+
+// Positioned 2.5 staff spaces above the staff
+```
+
+Supported types:
+- `comma` - Most common (`,`)
+- `tick` - Alternative mark
+- `caesura` - Double slash (`//`)
+
+### ✂️ Optimized Staff Lines
+
+Staff lines now **end exactly where music ends** - no more empty space:
+
+```
+BEFORE: ═══════════════════════════════
+        [music]      [empty space]
+
+AFTER:  ═══════════╡
+        [music]  ║▌
+                 ↑ ends here!
+```
+
+### 🎯 Intelligent Line Breaking
+
+Automatic line breaks every **4 measures** with proper barlines:
+
+```
+System 1: [M1][M2][M3][M4] |
+System 2: [M5][M6][M7][M8] |
+System 3: [M9][M10][M11][M12] |
+System 4: [M13][M14][M15][M16] ║▌
+```
+
+### 🔬 Technical: Musical Coordinate System
+
+**Important Discovery**: The musical coordinate system is **centered on staff line 3** (B4 in treble clef):
+
+```
+Line 1 ═══  Y = +2 SS (above center)
+Line 2 ═══  Y = +1 SS
+Line 3 ═══  Y = 0 (CENTER!)
+Line 4 ═══  Y = -1 SS
+Line 5 ═══  Y = -2 SS (below center)
+```
+
+**SMuFL Glyphs**:
+- Have origin (0,0) at **baseline** (typographic convention)
+- Use **specific anchors** from metadata.json (not geometric center)
+- Follow OpenType standards with Y-axis growing upward
+- Flutter's Y-axis is inverted (grows downward)
+
+This explains why `barlineYOffset = -2.0` is correct:
+- Positions baseline 2 staff spaces below center (line 5)
+- Glyph height of 4.0 SS makes it reach line 1
+- Perfect coverage of all 5 staff lines! ✅
+
+See `BARLINE_CALIBRATION_GUIDE.md` for technical details.
 
 ---
 
@@ -426,6 +546,12 @@ flutter run
 - ✅ Staff position calculator
 - ✅ Collision detection system
 - ✅ **Automatic measure validation system**
+- ✅ **Horizontal justification** (proportional spacing)
+- ✅ **Barlines with SMuFL glyphs** (all types)
+- ✅ **Repeat signs** (ritornelo forward/backward/both)
+- ✅ **Breath marks** (comma, tick, caesura)
+- ✅ **Optimized staff lines** (no empty space)
+- ✅ **Intelligent line breaking** (4 measures per system)
 - ✅ Theme system
 - ✅ JSON parser
 - ✅ Comprehensive examples
@@ -572,13 +698,22 @@ Dot position:
 
 When adding new renderers or modifying existing ones:
 
-1. **Understand the coordinate system** - Are you working with SMuFL baseline or Flutter top-of-box?
-2. **Check if baseline correction is enabled** - Most glyphs need it for proper positioning
-3. **Test with multiple staff positions** - Verify alignment on lines AND spaces
-4. **Document empirical values** - If you need corrections, explain why mathematically
-5. **Refer to `SOLUCAO_FINAL_PONTOS.md`** - Detailed case study of the dot positioning solution
+1. **Understand the coordinate system** - The musical staff is **centered on line 3** (Y=0)
+2. **SMuFL baseline vs geometric center** - Glyphs use **baseline** (0,0 at bottom-left), not center!
+3. **Check metadata.json** - Use SMuFL **anchors** for precise positioning
+4. **Account for Y-axis inversion** - Flutter (↓) vs OpenType (↑)
+5. **Test with multiple staff positions** - Verify alignment on lines AND spaces
+6. **Document empirical values** - Explain mathematically, not just "it works"
+7. **Refer to technical guides**:
+   - `SOLUCAO_FINAL_PONTOS.md` - Dot positioning case study
+   - `BARLINE_CALIBRATION_GUIDE.md` - Barline positioning
+   - `VISUAL_ADJUSTMENTS_FINAL.md` - Stem/flag alignment
 
-**Key principle:** All "magic numbers" in this library are actually **mathematical compensations** for the Flutter/SMuFL coordinate difference. They're documented and proven!
+**Key principles:**
+- Musical coordinate system: **line 3 = Y:0** (center)
+- SMuFL glyphs: **baseline = (0,0)** (typographic)
+- All "magic numbers" are **mathematical compensations** - document them!
+- Always verify against professional notation software (Finale, Sibelius, Dorico)
 
 ---
 
@@ -607,6 +742,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Engraving principles from:
   - "Behind Bars" by Elaine Gould
   - "The Art of Music Engraving" by Ted Ross
+- Technical insights:
+  - OpenType specification
+  - SMuFL metadata.json anchors
+  - ChatGPT for baseline/coordinate system clarification
 
 ---
 

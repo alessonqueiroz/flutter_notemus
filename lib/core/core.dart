@@ -22,6 +22,8 @@ export 'chord.dart';
 
 // === AGRUPAMENTOS ===
 export 'tuplet.dart';
+export 'tuplet_bracket.dart';
+export 'tuplet_number.dart';
 export 'beam.dart';
 export 'voice.dart';
 

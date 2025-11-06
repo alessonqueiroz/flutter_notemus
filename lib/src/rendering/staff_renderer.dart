@@ -10,6 +10,7 @@ import '../theme/music_score_theme.dart';
 import 'renderers/articulation_renderer.dart';
 import 'renderers/bar_element_renderer.dart';
 import 'renderers/barline_renderer.dart';
+import 'renderers/breath_renderer.dart';
 import 'renderers/chord_renderer.dart';
 import 'renderers/glyph_renderer.dart';
 import 'renderers/group_renderer.dart';
@@ -37,6 +38,7 @@ class StaffRenderer {
   late final ArticulationRenderer articulationRenderer;
   late final BarElementRenderer barElementRenderer;
   late final BarlineRenderer barlineRenderer;
+  late final BreathRenderer breathRenderer;
   late final ChordRenderer chordRenderer;
   late final GroupRenderer groupRenderer;
   late final NoteRenderer noteRenderer;
@@ -92,6 +94,16 @@ class StaffRenderer {
       coordinates: coordinates,
       metadata: metadata,
       theme: theme,
+      glyphRenderer: glyphRenderer,
+      glyphSize: glyphSize,
+    );
+
+    breathRenderer = BreathRenderer(
+      coordinates: coordinates,
+      metadata: metadata,
+      theme: theme,
+      glyphSize: glyphSize,
+      glyphRenderer: glyphRenderer,
     );
 
     noteRenderer = NoteRenderer(
@@ -151,7 +163,8 @@ class StaffRenderer {
   }
 
   void renderStaff(Canvas canvas, List<PositionedElement> elements, Size size) {
-    _drawStaffLines(canvas, size.width);
+    // Desenhar linhas do pentagrama POR SISTEMA
+    _drawStaffLinesBySystem(canvas, elements);
     currentClef = Clef(clefType: ClefType.treble); // Default clef
 
     // Primeira passagem: renderizar elementos individuais
@@ -167,19 +180,55 @@ class StaffRenderer {
     }
   }
 
-  void _drawStaffLines(Canvas canvas, double width) {
+  /// Desenha linhas do pentagrama POR SISTEMA
+  /// Cada sistema tem suas linhas terminando na última barline daquele sistema
+  void _drawStaffLinesBySystem(Canvas canvas, List<PositionedElement> elements) {
+    if (elements.isEmpty) return;
+    
+    // Agrupar elementos por sistema e calcular limites
+    final systemBounds = <int, ({double startX, double endX, double y})>{};
+    
+    for (final positioned in elements) {
+      final system = positioned.system;
+      final x = positioned.position.dx;
+      final y = positioned.position.dy;
+      
+      if (!systemBounds.containsKey(system)) {
+        systemBounds[system] = (startX: x, endX: x, y: y);
+      } else {
+        final current = systemBounds[system]!;
+        systemBounds[system] = (
+          startX: current.startX < x ? current.startX : x,
+          endX: current.endX > x ? current.endX : x,
+          y: current.y,
+        );
+      }
+    }
+    
     final paint = Paint()
       ..color = theme.staffLineColor
       ..strokeWidth = staffLineThickness
       ..style = PaintingStyle.stroke;
-
-    for (int line = 1; line <= 5; line++) {
-      final y = coordinates.getStaffLineY(line);
-      canvas.drawLine(
-        Offset(coordinates.staffBaseline.dx, y),
-        Offset(width - 20, y),
-        paint,
-      );
+    
+    // Desenhar linhas para cada sistema separadamente
+    for (final entry in systemBounds.entries) {
+      final bounds = entry.value;
+      
+      // Margem pequena após último elemento (para barra final)
+      final endX = bounds.endX + (coordinates.staffSpace * 2.5);
+      
+      // Desenhar as 5 linhas do pentagrama para este sistema
+      for (int line = 1; line <= 5; line++) {
+        // Calcular Y baseado no sistema (cada sistema tem seu próprio Y)
+        final baseY = bounds.y;
+        final lineY = baseY + (coordinates.getStaffLineY(line) - coordinates.getStaffLineY(3));
+        
+        canvas.drawLine(
+          Offset(coordinates.staffBaseline.dx, lineY),
+          Offset(endX, lineY), // Linhas param no fim do sistema!
+          paint,
+        );
+      }
     }
   }
 
@@ -221,7 +270,7 @@ class StaffRenderer {
     } else if (element is TempoMark) {
       symbolAndTextRenderer.renderTempoMark(canvas, element, basePosition);
     } else if (element is Breath) {
-      symbolAndTextRenderer.renderBreath(canvas, element, basePosition);
+      breathRenderer.render(canvas, element, basePosition);
     } else if (element is Caesura) {
       symbolAndTextRenderer.renderCaesura(canvas, element, basePosition);
     } else if (element is OctaveMark) {
