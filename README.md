@@ -9,6 +9,46 @@
 
 Flutter Notemus provides a comprehensive solution for rendering high-quality music notation in Flutter applications. Built on the SMuFL (Standard Music Font Layout) specification, it offers precise, professional-grade music engraving.
 
+## 📑 Table of Contents
+
+- [📸 Examples](#-examples)
+- [✨ Features](#-features)
+- [📊 JSON Format Reference](#-json-format-reference)
+- [📖 Quick Start](#-quick-start)
+- [⚠️ Measure Validation System](#️-measure-validation-system)
+- [🎼 Advanced Examples](#-advanced-examples)
+- [⚙️ Advanced Customization](#️-advanced-customization)
+- [🏗️ Architecture](#️-architecture)
+- [👥 Contributing](#-contributing)
+- [📄 License](#-license)
+
+---
+
+## 📸 Examples
+
+### Professional Music Notation Rendering
+
+<p align="center">
+  <img src="assets/readme/Captura%20de%20tela%202025-11-06%20141401.png" alt="Ode à Alegria - Complete Score" width="800">
+  <br>
+  <em>Complete "Ode à Alegria" with professional engraving, dynamics, and proper spacing</em>
+</p>
+
+<p align="center">
+  <img src="assets/readme/Captura%20de%20tela%202025-11-06%20141533.png" alt="Detailed Music Elements" width="800">
+  <br>
+  <em>Dotted notes, breath marks, and precise SMuFL glyph rendering</em>
+</p>
+
+### 🎯 Key Highlights
+
+- 🎼 **2932 SMuFL Glyphs** - Complete Bravura font support
+- 📊 **JSON Import/Export** - Professional format with 12+ element types
+- ✅ **Auto Validation** - Music theory-based measure validation
+- 🎨 **Professional Layout** - Horizontal justification, smart spacing
+- 🔄 **Repeat Signs** - Full ritornelo support (`:||`, `||:`, `:||:`)
+- 📏 **Precise Rendering** - SMuFL anchors for pixel-perfect positioning
+
 ---
 
 ## ✨ Features
