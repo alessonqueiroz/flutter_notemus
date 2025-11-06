@@ -65,6 +65,7 @@ class BeamAnalyzer {
   }
 
   /// Determina direção das hastes baseado na nota mais distante da linha central
+  /// ✅ CORREÇÃO P3: Linha central é sempre staffPosition = 0, independente da clave
   StemDirection _calculateStemDirection(
     List<Note> notes,
     Map<Note, int>? noteStaffPositions,
@@ -73,8 +74,9 @@ class BeamAnalyzer {
       return StemDirection.up; // Padrão
     }
 
-    // Linha central da pauta (linha 3 = B4 em clave de Sol)
-    const int centerLine = 6; // Posição 6 = linha central
+    // ✅ CORREÇÃO P3: Linha central é sempre staffPosition = 0
+    // (independente da clave - treble, bass, alto, etc.)
+    const int centerLine = 0;
 
     // Encontrar nota mais distante da linha central
     Note? farthest;
@@ -96,9 +98,10 @@ class BeamAnalyzer {
     }
 
     final farthestPos = noteStaffPositions[farthest]!;
-    
-    // Notas acima da linha central: hastes para baixo
-    // Notas abaixo da linha central: hastes para cima
+
+    // ✅ staffPosition > 0: acima do centro → hastes para baixo
+    // ✅ staffPosition < 0: abaixo do centro → hastes para cima
+    // ✅ staffPosition = 0: exatamente no centro → hastes para baixo (convenção)
     return farthestPos >= centerLine ? StemDirection.down : StemDirection.up;
   }
 
@@ -164,8 +167,9 @@ class BeamAnalyzer {
       return;
     }
 
-    final firstPos = noteStaffPositions[firstNote] ?? 6;
-    final lastPos = noteStaffPositions[lastNote] ?? 6;
+    // ✅ CORREÇÃO P3: Fallback para 0 (linha central), não 6
+    final firstPos = noteStaffPositions[firstNote] ?? 0;
+    final lastPos = noteStaffPositions[lastNote] ?? 0;
 
     // Determinar se deve ser horizontal
     final shouldBeHorizontal = _shouldBeHorizontal(
@@ -237,11 +241,12 @@ class BeamAnalyzer {
     Map<Note, int> noteStaffPositions,
     StemDirection stemDirection,
   ) {
+    // ✅ CORREÇÃO P3: Fallback para 0 (linha central), não 6
     // Encontrar nota mais extrema
-    int extremePos = noteStaffPositions[notes.first] ?? 6;
+    int extremePos = noteStaffPositions[notes.first] ?? 0;
 
     for (final note in notes) {
-      final pos = noteStaffPositions[note] ?? 6;
+      final pos = noteStaffPositions[note] ?? 0;
       if (stemDirection == StemDirection.up) {
         extremePos = min(extremePos, pos); // Mais baixa
       } else {
@@ -271,24 +276,30 @@ class BeamAnalyzer {
   }
 
   /// Calcula inclinação (slant) do beam
+  /// ✅ CORREÇÃO P5: Cálculo correto da inclinação baseado em Elaine Gould
   double _calculateBeamSlant(
     int firstPos,
     int lastPos,
     int noteCount,
     double spacing,
   ) {
-    final intervalStaves = (lastPos - firstPos).abs() * (staffSpace / 2);
+    // staffPosition já está em half staff spaces (cada unidade = 0.5 SS)
+    // Converter diferença para pixels
+    final intervalPixels = (lastPos - firstPos).abs() * (staffSpace / 2);
+
     double maxSlant;
 
-    // Regra de Gould: limitar inclinação
+    // Regra de Gould: limitar inclinação baseado no número de notas
     if (noteCount <= 3) {
       maxSlant = 0.5 * staffSpace;
     } else {
       maxSlant = 1.25 * staffSpace;
     }
 
-    // Aumentar com espaçamento, mas com limite
-    double slant = min(intervalStaves * 0.25, maxSlant);
+    // ✅ CORREÇÃO P5: Usar uma proporção maior do intervalo
+    // Proporção típica: 50-75% do intervalo real
+    // Aqui usamos 0.5 para um slant moderado
+    double slant = min(intervalPixels * 0.5, maxSlant);
 
     // Notas muito próximas: ângulo mínimo
     if (spacing < 3 * staffSpace) {

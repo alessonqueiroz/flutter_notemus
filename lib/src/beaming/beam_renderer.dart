@@ -31,20 +31,25 @@ class BeamRenderer {
 
   /// Renderiza um beam group completo (apenas hastes e beams)
   /// Noteheads são renderizados pelo NoteRenderer
-  void renderAdvancedBeamGroup(Canvas canvas, AdvancedBeamGroup group) {
+  void renderAdvancedBeamGroup(
+    Canvas canvas,
+    AdvancedBeamGroup group, {
+    Map<dynamic, double>? noteYPositions,
+  }) {
     print('      🎨 [BeamRenderer] renderAdvancedBeamGroup INICIADO');
     print('         leftX: ${group.leftX.toStringAsFixed(2)}, rightX: ${group.rightX.toStringAsFixed(2)}');
     print('         leftY: ${group.leftY.toStringAsFixed(2)}, rightY: ${group.rightY.toStringAsFixed(2)}');
     print('         stemDirection: ${group.stemDirection}');
     print('         beamSegments: ${group.beamSegments.length}');
-    
+    print('         noteYPositions disponível: ${noteYPositions != null && noteYPositions.isNotEmpty}');
+
     final paint = Paint()
       ..color = theme.beamColor ?? theme.stemColor
       ..style = PaintingStyle.fill;
 
     // 1. Renderizar hastes
     print('         🔹 Renderizando hastes...');
-    _renderStems(canvas, group, paint);
+    _renderStems(canvas, group, paint, noteYPositions);
 
     // 2. Renderizar todos os segmentos de beam
     print('         🔹 Renderizando ${group.beamSegments.length} beam segments...');
@@ -55,7 +60,12 @@ class BeamRenderer {
   }
 
   /// Renderiza as hastes do grupo
-  void _renderStems(Canvas canvas, AdvancedBeamGroup group, Paint paint) {
+  void _renderStems(
+    Canvas canvas,
+    AdvancedBeamGroup group,
+    Paint paint,
+    Map<dynamic, double>? noteYPositions,
+  ) {
     final stemPaint = Paint()
       ..color = theme.stemColor
       ..strokeWidth = stemThickness
@@ -64,14 +74,13 @@ class BeamRenderer {
 
     for (int i = 0; i < group.notes.length; i++) {
       final note = group.notes[i];
-      
+
       // Calcular posição X da haste (centro da nota)
       final noteX = _getNoteX(group, i);
       final stemX = noteX + (noteheadWidth / 2);
 
-      // Calcular posição Y do início da haste (na cabeça da nota)
-      // TODO: Obter Y real da nota do layout
-      final noteY = _estimateNoteY(note, group);
+      // ✅ CORREÇÃO P1: Usar posição Y real da nota do layout
+      final noteY = noteYPositions?[note] ?? _estimateNoteY(note, group);
 
       // Calcular posição Y do fim da haste (onde encontra o beam)
       final beamY = group.interpolateBeamY(stemX);

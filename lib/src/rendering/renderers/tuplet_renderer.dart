@@ -117,25 +117,21 @@ class TupletRenderer {
     final noteHeadWidth = coordinates.staffSpace * 1.2;
     final actualLastX = lastNotePos.dx + noteHeadWidth;
 
-    // CRÍTICO: Encontrar a nota MAIS ALTA (menor Y) do grupo
+    // ✅ CORREÇÃO P7: Encontrar a nota MAIS ALTA usando posições reais
     double highestY = firstNotePos.dy;
-    final clefString = _getClefString(currentClef);
-    for (int i = 0; i < notes.length && i < notePositions.length; i++) {
-      final pitch = notes[i].pitch;
-      final noteY = coordinates.getNoteY(
-        pitch.step,
-        pitch.octave,
-        clef: clefString,
-      );
-      if (noteY < highestY) {
-        highestY = noteY;
+    for (final pos in notePositions) {
+      if (pos.dy < highestY) {
+        highestY = pos.dy;
       }
     }
 
-    // Calcular altura do bracket baseada na nota MAIS ALTA
-    // Offset de 3.0 SS: fica acima das hastes (~2.5 SS) com margem
-    // Behind Bars: bracket deve ter clearance das hastes
-    final bracketOffset = coordinates.staffSpace * 3.0;
+    // ✅ CORREÇÃO P7: Calcular offset dinamicamente baseado em hastes
+    // Stem length típico: 3.5 SS (SMuFL spec)
+    // Adicionar margem de 1.0 SS para clearance
+    // Total: ~4.5 SS de offset
+    final stemLength = coordinates.staffSpace * 3.5;
+    final clearance = coordinates.staffSpace * 1.0;
+    final bracketOffset = stemLength + clearance;
     final bracketY = highestY - bracketOffset;
 
     // Espessura do bracket
@@ -192,26 +188,22 @@ class TupletRenderer {
     final noteHeadWidth = coordinates.staffSpace * 1.2;
     final actualLastX = lastNotePos.dx + noteHeadWidth;
 
-    // Encontrar a nota MAIS ALTA (mesmo cálculo do bracket)
+    // ✅ CORREÇÃO P7: Usar posições reais (não recalcular)
     double highestY = firstNotePos.dy;
-    final clefString = _getClefString(currentClef);
-    for (int i = 0; i < notes.length && i < notePositions.length; i++) {
-      final pitch = notes[i].pitch;
-      final noteY = coordinates.getNoteY(
-        pitch.step,
-        pitch.octave,
-        clef: clefString,
-      );
-      if (noteY < highestY) {
-        highestY = noteY;
+    for (final pos in notePositions) {
+      if (pos.dy < highestY) {
+        highestY = pos.dy;
       }
     }
 
-    // Usar MESMO offset do bracket (3.0 SS)
-    final bracketOffset = coordinates.staffSpace * 3.0;
+    // ✅ CORREÇÃO P7: Usar MESMO offset dinâmico do bracket
+    final stemLength = coordinates.staffSpace * 3.5;
+    final clearance = coordinates.staffSpace * 1.0;
+    final bracketOffset = stemLength + clearance;
     final bracketY = highestY - bracketOffset;
 
     final centerX = (firstNotePos.dx + actualLastX) / 2;
+    // Número fica 0.8 SS acima do bracket
     final numberY = bracketY - (coordinates.staffSpace * 0.8);
 
     final glyphName = 'tuplet$number';
@@ -301,16 +293,17 @@ class TupletRenderer {
     print('  Número de notas: ${notes.length}');
     print('  Staff Space: ${coordinates.staffSpace.toStringAsFixed(2)}');
 
-    final stemHeight = coordinates.staffSpace * 2.5;
+    // ✅ CORREÇÃO P8: Usar altura padrão SMuFL (3.5 SS, não 2.5 SS)
+    final stemHeight = coordinates.staffSpace * 3.5;
     final beamThickness =
-        coordinates.staffSpace * 0.3; // Reduzido de 0.5 para 0.3 SS
+        coordinates.staffSpace * 0.5; // SMuFL spec: 0.5 SS
 
     print('  Stem Height: ${stemHeight.toStringAsFixed(2)}');
     print('  Beam Thickness: ${beamThickness.toStringAsFixed(2)}');
 
-    // CRÍTICO: Determinar direção das hastes baseada na posição média
-    // Linha 3 (centro) está em Y = 72 (12 SS * 6 linhas / 2)
-    final staffCenterY = coordinates.staffSpace * 6.0; // ~72
+    // ✅ CORREÇÃO P8: Calcular centro baseado em baseline do sistema
+    // O baseline está em staffSpace * 5.0 (vindo do layout)
+    final staffCenterY = coordinates.staffBaseline.dy;
     final averageY =
         notePositions.map((p) => p.dy).reduce((a, b) => a + b) /
         notePositions.length;

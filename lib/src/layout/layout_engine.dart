@@ -232,6 +232,9 @@ class LayoutEngine {
   /// Retorna os Advanced Beam Groups calculados pelo último layout
   List<AdvancedBeamGroup> get advancedBeamGroups => List.unmodifiable(_advancedBeamGroups);
 
+  /// ✅ CORREÇÃO P1/P4: Expor posições Y das notas para renderização de hastes
+  Map<Note, double> get noteYPositions => Map.unmodifiable(_noteYPositions);
+
   List<PositionedElement> layout() {
     // Limpar mapas de posições
     _noteXPositions.clear();

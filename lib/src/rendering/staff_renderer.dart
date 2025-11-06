@@ -236,11 +236,20 @@ class StaffRenderer {
     if (layoutEngine != null && layoutEngine.advancedBeamGroups.isNotEmpty) {
       print('\n🎨 [StaffRenderer] Renderizando ${layoutEngine.advancedBeamGroups.length} Advanced Beams');
       int beamIndex = 0;
+      // ✅ CORREÇÃO P1/P4: Obter posições Y das notas do layout
+      final noteYPositions = layoutEngine.noteYPositions;
+      print('   📍 Posições Y disponíveis: ${noteYPositions.length} notas');
+
       for (final advancedGroup in layoutEngine.advancedBeamGroups) {
         beamIndex++;
         print('   🎨 Renderizando beam $beamIndex/${layoutEngine.advancedBeamGroups.length}');
         print('      Notas: ${advancedGroup.notes.length}, Segments: ${advancedGroup.beamSegments.length}');
-        beamRenderer.renderAdvancedBeamGroup(canvas, advancedGroup);
+        // ✅ CORREÇÃO P1/P4: Passar posições Y reais para o renderer
+        beamRenderer.renderAdvancedBeamGroup(
+          canvas,
+          advancedGroup,
+          noteYPositions: noteYPositions,
+        );
       }
       print('   ✅ Todos os beams renderizados!\n');
     } else {
