@@ -1,45 +1,12 @@
-// example/professional_json_example.dart
+// example/lib/examples/professional_json_example.dart
 // Ode à Alegria - JSON Profissional Completo
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_notemus/flutter_notemus.dart';
 import 'package:flutter_notemus/src/parsers/json_parser.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Carregar fonte Bravura
-  final fontLoader = FontLoader('Bravura');
-  fontLoader.addFont(
-      rootBundle.load('packages/flutter_notemus/assets/smufl/Bravura.otf'));
-  await fontLoader.load();
-
-  // Carregar metadados SMuFL
-  await SmuflMetadata().load();
-
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Ode à Alegria - JSON Profissional',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        useMaterial3: true,
-      ),
-      home: const ProfessionalJsonPage(),
-    );
-  }
-}
-
-class ProfessionalJsonPage extends StatelessWidget {
-  const ProfessionalJsonPage({Key? key}) : super(key: key);
+class ProfessionalJsonExample extends StatelessWidget {
+  const ProfessionalJsonExample({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

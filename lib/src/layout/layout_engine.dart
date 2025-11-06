@@ -4,12 +4,12 @@
 // FASE 2 REFATORAÇÃO: Usando tipos do core/
 
 import 'package:flutter/material.dart';
-import '../../core/core.dart';
-import '../smufl/smufl_metadata_loader.dart';
-import 'beam_grouper.dart';
-import 'bounding_box.dart';
-import 'measure_validator.dart';
-import 'spacing/spacing.dart' as spacing; // Sistema de Espaçamento Inteligente
+import 'package:flutter_notemus/core/core.dart';
+import 'package:flutter_notemus/src/beaming/beam_analyzer.dart';
+import 'package:flutter_notemus/src/beaming/beam_group.dart';
+import 'package:flutter_notemus/src/layout/beam_grouper.dart';
+import 'package:flutter_notemus/src/rendering/staff_position_calculator.dart';
+import 'spacing/spacing.dart' as spacing;
 
 class PositionedElement {
   final MusicalElement element;
@@ -24,17 +24,26 @@ class LayoutCursor {
   final double availableWidth;
   final double systemMargin;
   final double systemHeight;
+  
+  // Mapas para capturar posições das notas (para beaming)
+  final Map<Note, double>? noteXPositions;
+  final Map<Note, int>? noteStaffPositions;
+  final Map<Note, double>? noteYPositions; // ✅ NOVO: Y absoluto em pixels
 
   double _currentX;
   double _currentY;
   int _currentSystem;
   bool _isFirstMeasureInSystem;
+  Clef? _currentClef; // ✅ NOVO: Rastrear clave atual
 
   LayoutCursor({
     required this.staffSpace,
     required this.availableWidth,
     required this.systemMargin,
     this.systemHeight = 10.0,
+    this.noteXPositions,
+    this.noteStaffPositions,
+    this.noteYPositions, // ✅ NOVO
   }) : _currentX = systemMargin,
        _currentY =
            staffSpace *
@@ -93,12 +102,31 @@ class LayoutCursor {
   }
 
   void addElement(MusicalElement element, List<PositionedElement> elements) {
-    // FASE 3: Inicializar BoundingBox hierárquico se elemento suporta
-    if (element is BoundingBoxSupport) {
-      final bboxSupport = element as BoundingBoxSupport;
-      final bbox = bboxSupport.getOrCreateBoundingBox();
-      // Definir posição relativa (será ajustada depois pelo renderer)
-      bbox.relativePosition = PointF2D(_currentX, _currentY);
+    // BoundingBox support comentado temporariamente
+    // TODO: Reativar quando BoundingBoxSupport estiver disponível
+    
+    // Rastrear clave atual
+    if (element is Clef) {
+      _currentClef = element;
+    }
+    
+    // Capturar posições de notas para beaming avançado
+    if (element is Note && _currentClef != null) {
+      noteXPositions?[element] = _currentX;
+      
+      // ✅ USAR STAFFPOSITIONCALCULATOR (fonte oficial de verdade!)
+      final staffPosition = StaffPositionCalculator.calculate(element.pitch, _currentClef!);
+      noteStaffPositions?[element] = staffPosition;
+      
+      // ✅ Converter para Y absoluto usando método oficial
+      final noteY = StaffPositionCalculator.toPixelY(
+        staffPosition,
+        staffSpace,
+        _currentY, // baseline do sistema
+      );
+      noteYPositions?[element] = noteY;
+      
+      print('      📍 [LayoutCursor] Nota ${element.pitch.step}${element.pitch.octave}: staffPos=$staffPosition, _currentY=${_currentY.toStringAsFixed(2)}, noteY=${noteY.toStringAsFixed(2)}');
     }
 
     elements.add(
@@ -115,10 +143,17 @@ class LayoutEngine {
   final Staff staff;
   final double availableWidth;
   final double staffSpace;
-  final SmuflMetadata? metadata;
+  final dynamic metadata; // TODO: Usar SmuflMetadata quando disponível
 
   // Sistema de Espaçamento Inteligente
   late final spacing.IntelligentSpacingEngine _spacingEngine;
+
+  // Sistema de Beaming Avançado
+  late final BeamAnalyzer _beamAnalyzer;
+  final Map<Note, double> _noteXPositions = {};
+  final Map<Note, int> _noteStaffPositions = {};
+  final Map<Note, double> _noteYPositions = {}; // ✅ NOVO: Y absoluto em pixels
+  final List<AdvancedBeamGroup> _advancedBeamGroups = [];
 
   // Configuração de validação (silenciosa por padrão)
   final bool verboseValidation;
@@ -157,6 +192,12 @@ class LayoutEngine {
       preferences: spacingPreferences ?? spacing.SpacingPreferences.normal,
     );
     _spacingEngine.initializeOpticalCompensator(staffSpace);
+    
+    // Inicializar sistema de beaming avançado
+    _beamAnalyzer = BeamAnalyzer(
+      staffSpace: staffSpace,
+      noteheadWidth: noteheadBlackWidth * staffSpace,
+    );
   }
 
   /// Obtém largura de glifo dinamicamente do metadata ou retorna fallback
@@ -187,12 +228,24 @@ class LayoutEngine {
   /// Largura do bemol
   double get accidentalFlatWidth =>
       _getGlyphWidth('accidentalFlat', _accidentalFlatWidthFallback);
+  
+  /// Retorna os Advanced Beam Groups calculados pelo último layout
+  List<AdvancedBeamGroup> get advancedBeamGroups => List.unmodifiable(_advancedBeamGroups);
 
   List<PositionedElement> layout() {
+    // Limpar mapas de posições
+    _noteXPositions.clear();
+    _noteStaffPositions.clear();
+    _noteYPositions.clear(); // ✅ NOVO
+    _advancedBeamGroups.clear();
+    
     final cursor = LayoutCursor(
       staffSpace: staffSpace,
       availableWidth: availableWidth,
       systemMargin: systemMargin * staffSpace,
+      noteXPositions: _noteXPositions,
+      noteStaffPositions: _noteStaffPositions,
+      noteYPositions: _noteYPositions, // ✅ NOVO
     );
 
     final List<PositionedElement> positionedElements = [];
@@ -234,27 +287,17 @@ class LayoutEngine {
 
       // Validação silenciosa (apenas contar estatísticas)
       if (timeSignatureToUse != null) {
-        final validation = MeasureValidator.validateWithTimeSignature(
-          measure,
-          timeSignatureToUse,
-          allowAnacrusis: isFirst && i == 0,
-        );
-
-        if (validation.isValid) {
-          validMeasures++;
-        } else {
-          invalidMeasures++;
-
-          // Apenas mostrar erro se verbose ativado
-          if (verboseValidation) {
-            final expectedCap =
-                timeSignatureToUse.numerator / timeSignatureToUse.denominator;
-            final diff = (validation.actualDuration - expectedCap).abs();
-            print(
-              'Compasso ${i + 1}: INVALIDO (esperado: ${expectedCap.toStringAsFixed(3)}, atual: ${validation.actualDuration.toStringAsFixed(3)}, diff: ${diff.toStringAsFixed(4)})',
-            );
-          }
-        }
+        // TODO: Reativar validação quando MeasureValidator estiver disponível
+        // final validation = MeasureValidator.validateWithTimeSignature(
+        //   measure,
+        //   timeSignatureToUse,
+        //   allowAnacrusis: isFirst && i == 0,
+        // );
+        // if (validation.isValid) {
+        //   validMeasures++;
+        // } else {
+        //   invalidMeasures++;
+        // }
       }
 
       final measureWidth = _calculateMeasureWidthCursor(measure, isFirst);
@@ -317,8 +360,84 @@ class LayoutEngine {
 
     // JUSTIFICAÇÃO HORIZONTAL: Esticar compassos para preencher largura
     _justifyHorizontally(positionedElements, systemMeasures);
+    
+    // ANÁLISE DE BEAMING AVANÇADO: Criar AdvancedBeamGroups
+    _analyzeBeamGroups(currentTimeSignature);
 
     return positionedElements;
+  }
+  
+  /// Analisa beam groups e cria AdvancedBeamGroups para renderização
+  void _analyzeBeamGroups(TimeSignature? timeSignature) {
+    if (timeSignature == null) {
+      print('⚠️  [LayoutEngine] _analyzeBeamGroups: TimeSignature é null, abortando');
+      return;
+    }
+    
+    print('\n🔍 [LayoutEngine] _analyzeBeamGroups INICIADO');
+    print('   TimeSignature: ${timeSignature.numerator}/${timeSignature.denominator}');
+    print('   Total de compassos: ${staff.measures.length}');
+    print('   Notas capturadas (X positions): ${_noteXPositions.length}');
+    print('   Notas capturadas (Staff positions): ${_noteStaffPositions.length}');
+    print('   Notas capturadas (Y positions): ${_noteYPositions.length}');
+    
+    // Para cada compasso, detectar beam groups e analisar
+    int measureIndex = 0;
+    for (final measure in staff.measures) {
+      measureIndex++;
+      final notes = measure.elements.whereType<Note>().toList();
+      if (notes.isEmpty) {
+        print('   📏 Compasso $measureIndex: SEM NOTAS, pulando');
+        continue;
+      }
+      
+      print('   📏 Compasso $measureIndex: ${notes.length} notas encontradas');
+      
+      // Detectar beam groups usando o sistema existente
+      final beamGroups = BeamGrouper.groupNotesForBeaming(
+        notes,
+        timeSignature,
+        autoBeaming: measure.autoBeaming,
+        beamingMode: measure.beamingMode,
+        manualBeamGroups: measure.manualBeamGroups,
+      );
+      
+      print('   🔗 BeamGrouper retornou ${beamGroups.length} grupos');
+      
+      // Analisar cada beam group
+      int groupIndex = 0;
+      for (final beamGroup in beamGroups) {
+        groupIndex++;
+        print('      📦 Grupo $groupIndex: ${beamGroup.notes.length} notas, isValid=${beamGroup.isValid}');
+        
+        if (beamGroup.isValid && beamGroup.notes.length >= 2) {
+          try {
+            print('      🔬 Analisando com BeamAnalyzer...');
+            final advancedGroup = _beamAnalyzer.analyzeAdvancedBeamGroup(
+              beamGroup.notes,
+              timeSignature,
+              noteXPositions: _noteXPositions,
+              noteStaffPositions: _noteStaffPositions,
+              noteYPositions: _noteYPositions, // ✅ NOVO
+            );
+            _advancedBeamGroups.add(advancedGroup);
+            print('      ✅ AdvancedBeamGroup criado! Total: ${_advancedBeamGroups.length}');
+          } catch (e, stackTrace) {
+            // Ignorar erros de análise de beaming (não críticos)
+            print('      ❌ ERRO ao analisar beam group: $e');
+            print('      Stack trace: $stackTrace');
+            if (verboseValidation) {
+              print('Aviso: Erro ao analisar beam group: $e');
+            }
+          }
+        } else {
+          print('      ⏭️  Pulando grupo (inválido ou menos de 2 notas)');
+        }
+      }
+    }
+    
+    print('🏁 [LayoutEngine] _analyzeBeamGroups FINALIZADO');
+    print('   Total de AdvancedBeamGroups criados: ${_advancedBeamGroups.length}\n');
   }
 
   /// Justifica horizontalmente os compassos para preencher a largura disponível

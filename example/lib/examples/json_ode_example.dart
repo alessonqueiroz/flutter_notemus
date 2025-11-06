@@ -1,32 +1,12 @@
-// example/json_ode_example.dart
+// example/lib/examples/json_ode_example.dart
 // Ode à Alegria renderizada a partir de JSON simplificado
 
 import 'package:flutter/material.dart';
 import 'package:flutter_notemus/flutter_notemus.dart';
 import 'package:flutter_notemus/src/parsers/json_parser.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Ode à Alegria - JSON',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        useMaterial3: true,
-      ),
-      home: const OdeJoyJsonPage(),
-    );
-  }
-}
-
-class OdeJoyJsonPage extends StatelessWidget {
-  const OdeJoyJsonPage({Key? key}) : super(key: key);
+class JsonOdeExample extends StatelessWidget {
+  const JsonOdeExample({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -75,15 +55,9 @@ class OdeJoyJsonPage extends StatelessWidget {
     // 📊 PARSEAR JSON → STAFF
     final staff = JsonMusicParser.parseStaff(jsonString);
 
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: const Text('Ode à Alegria - JSON'),
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 📋 Header
@@ -192,8 +166,7 @@ class OdeJoyJsonPage extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildInfoRow(String label, String value) {

@@ -80,35 +80,35 @@ class BeamGrouper {
     TimeSignature timeSignature,
   ) {
     final groups = <BeamGroup>[];
-    final beatUnit = 1.0 / timeSignature.denominator; // Valor de um tempo
-
+    
+    // Regra simples para 4/4: agrupar por tempo (quarter note = 0.25)
+    // Para outros compassos simples, agrupar por beat unit
+    final beatUnit = 1.0 / timeSignature.denominator;
+    
     var currentGroup = <Note>[];
-    var currentBeatPosition = 0.0;
+    var currentPosition = 0.0;
 
     for (final note in notes) {
       final noteDuration = note.duration.realValue;
-      final nextBeatPosition = currentBeatPosition + noteDuration;
-
-      // Verifica se a nota atravessa um tempo
-      final currentBeat = (currentBeatPosition / beatUnit).floor();
-      final nextBeat = (nextBeatPosition / beatUnit).floor();
-
-      if (currentBeat != nextBeat && currentGroup.isNotEmpty) {
-        // Finaliza o grupo atual se atravessa um tempo
+      final noteEnd = currentPosition + noteDuration;
+      
+      // Determinar em qual beat esta nota começa e termina
+      final startBeat = (currentPosition / beatUnit).floor();
+      final endBeat = ((noteEnd - 0.0001) / beatUnit).floor(); // Tolerância
+      
+      // Se a nota cruza para o próximo beat, finalizar grupo atual
+      if (startBeat != endBeat && currentGroup.isNotEmpty) {
+        // Finalizar o grupo anterior
         if (currentGroup.length >= 2) {
           groups.add(BeamGroup(notes: List.from(currentGroup)));
         }
-        currentGroup.clear();
+        currentGroup = [note]; // Iniciar novo grupo com esta nota
+      } else {
+        // Nota está dentro do mesmo beat, adicionar ao grupo
+        currentGroup.add(note);
       }
-
-      currentGroup.add(note);
-      currentBeatPosition = nextBeatPosition;
-
-      // Finaliza grupo se completou um tempo
-      if (nextBeatPosition % beatUnit == 0 && currentGroup.length >= 2) {
-        groups.add(BeamGroup(notes: List.from(currentGroup)));
-        currentGroup.clear();
-      }
+      
+      currentPosition = noteEnd;
     }
 
     // Adiciona grupo final se tiver pelo menos 2 notas

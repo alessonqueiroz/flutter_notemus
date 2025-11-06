@@ -7,6 +7,7 @@ import '../../core/core.dart'; // 🆕 Tipos do core
 import '../layout/layout_engine.dart';
 import '../smufl/smufl_metadata_loader.dart';
 import '../theme/music_score_theme.dart';
+import '../beaming/beaming.dart'; // Sistema de beaming avançado
 import 'renderers/articulation_renderer.dart';
 import 'renderers/bar_element_renderer.dart';
 import 'renderers/barline_renderer.dart';
@@ -72,6 +73,7 @@ class StaffRenderer {
   late final ArticulationRenderer articulationRenderer;
   late final BarElementRenderer barElementRenderer;
   late final BarlineRenderer barlineRenderer;
+  late final BeamRenderer beamRenderer;
   late final BreathRenderer breathRenderer;
   late final ChordRenderer chordRenderer;
   late final GroupRenderer groupRenderer;
@@ -130,6 +132,12 @@ class StaffRenderer {
       theme: theme,
       glyphRenderer: glyphRenderer,
       glyphSize: glyphSize,
+    );
+
+    beamRenderer = BeamRenderer(
+      theme: theme,
+      staffSpace: coordinates.staffSpace,
+      noteheadWidth: metadata.getGlyphWidth('noteheadBlack') * coordinates.staffSpace,
     );
 
     breathRenderer = BreathRenderer(
@@ -196,7 +204,25 @@ class StaffRenderer {
     );
   }
 
-  void renderStaff(Canvas canvas, List<PositionedElement> elements, Size size) {
+  // Set de notas que estão em advanced beam groups
+  final Set<Note> _notesInAdvancedBeams = {};
+
+  void renderStaff(
+    Canvas canvas, 
+    List<PositionedElement> elements, 
+    Size size,
+    {LayoutEngine? layoutEngine}
+  ) {
+    // Limpar set de notas beamed
+    _notesInAdvancedBeams.clear();
+    
+    // Coletar notas que estão em advanced beam groups
+    if (layoutEngine != null) {
+      for (final group in layoutEngine.advancedBeamGroups) {
+        _notesInAdvancedBeams.addAll(group.notes);
+      }
+    }
+    
     // Desenhar linhas do pentagrama POR SISTEMA
     _drawStaffLinesBySystem(canvas, elements);
     currentClef = Clef(clefType: ClefType.treble); // Default clef
@@ -206,9 +232,32 @@ class StaffRenderer {
       _renderElement(canvas, positioned);
     }
 
-    // Segunda passagem: renderizar elementos de grupo (beams, ties, slurs)
+    // Segunda passagem: renderizar ADVANCED BEAMS (se disponível)
+    if (layoutEngine != null && layoutEngine.advancedBeamGroups.isNotEmpty) {
+      print('\n🎨 [StaffRenderer] Renderizando ${layoutEngine.advancedBeamGroups.length} Advanced Beams');
+      int beamIndex = 0;
+      for (final advancedGroup in layoutEngine.advancedBeamGroups) {
+        beamIndex++;
+        print('   🎨 Renderizando beam $beamIndex/${layoutEngine.advancedBeamGroups.length}');
+        print('      Notas: ${advancedGroup.notes.length}, Segments: ${advancedGroup.beamSegments.length}');
+        beamRenderer.renderAdvancedBeamGroup(canvas, advancedGroup);
+      }
+      print('   ✅ Todos os beams renderizados!\n');
+    } else {
+      print('\n⚠️  [StaffRenderer] Nenhum Advanced Beam para renderizar');
+      if (layoutEngine == null) {
+        print('   Motivo: layoutEngine é null');
+      } else {
+        print('   Motivo: advancedBeamGroups está vazio (${layoutEngine.advancedBeamGroups.length} grupos)');
+      }
+    }
+
+    // Terceira passagem: renderizar elementos de grupo simples (ties, slurs)
     if (currentClef != null) {
-      groupRenderer.renderBeams(canvas, elements, currentClef!);
+      // Pular beams simples se temos advanced beams
+      if (layoutEngine == null || layoutEngine.advancedBeamGroups.isEmpty) {
+        groupRenderer.renderBeams(canvas, elements, currentClef!);
+      }
       groupRenderer.renderTies(canvas, elements, currentClef!);
       groupRenderer.renderSlurs(canvas, elements, currentClef!);
     }
@@ -301,10 +350,16 @@ class StaffRenderer {
     } else if (element is TimeSignature) {
       barElementRenderer.renderTimeSignature(canvas, element, basePosition);
     } else if (element is Note && currentClef != null) {
-      // CORREÇÃO: Não renderizar notas com beam aqui
-      if (element.beam == null) {
-        noteRenderer.render(canvas, element, basePosition, currentClef!);
-      }
+      // Renderizar noteheads sempre!
+      // Se a nota está em advanced beam, renderizar apenas notehead (sem stem/flag)
+      final onlyNotehead = _notesInAdvancedBeams.contains(element);
+      noteRenderer.render(
+        canvas, 
+        element, 
+        basePosition, 
+        currentClef!,
+        renderOnlyNotehead: onlyNotehead,
+      );
     } else if (element is Rest) {
       restRenderer.render(canvas, element, basePosition);
     } else if (element is Barline) {

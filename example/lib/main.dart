@@ -12,6 +12,7 @@ import 'examples/articulations_example.dart';
 import 'examples/dots_and_ledgers_example.dart';
 import 'examples/chords_example.dart';
 import 'examples/beams_example.dart';
+import 'examples/beaming_showcase.dart';
 import 'examples/ornaments_example.dart';
 import 'examples/dynamics_example.dart';
 import 'examples/tempo_agogics_example.dart';
@@ -31,6 +32,11 @@ import 'examples/complete_clefs_demo.dart';
 import 'examples/complete_articulations_ornaments.dart';
 import 'examples/complete_advanced_elements.dart';
 import 'examples/complete_music_piece.dart';
+
+// Exemplos JSON
+import 'examples/simple_json_example.dart';
+import 'examples/json_ode_example.dart';
+import 'examples/professional_json_example.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -83,6 +89,7 @@ class _MainScreenState extends State<MainScreen> {
     'Pontos e Linhas Suplementares',
     'Acordes',
     'Barras de Ligação (Beams)',
+    '🎵 Beaming Avançado (Showcase)',
     'Ornamentos',
     'Dinâmicas',
     'Tempo e Agógica',
@@ -98,6 +105,9 @@ class _MainScreenState extends State<MainScreen> {
     '🎵 DEMO: Articulações Completas',
     '🎸 DEMO: Elementos Avançados',
     '🎹 DEMO: Peça Musical Completa',
+    '📄 JSON: Exemplo Simples',
+    '📄 JSON: Ode à Alegria',
+    '📄 JSON: Profissional Completo',
   ];
 
   final List<Widget> _pages = const [
@@ -111,6 +121,7 @@ class _MainScreenState extends State<MainScreen> {
     DotsAndLedgersExample(),
     ChordsExample(),
     BeamsExample(),
+    BeamingShowcase(),
     OrnamentsExample(),
     DynamicsExample(),
     TempoAgogicsExample(),
@@ -127,6 +138,10 @@ class _MainScreenState extends State<MainScreen> {
     CompleteArticulationsOrnamentsExample(),
     CompleteAdvancedElementsExample(),
     CompleteMusicPieceExample(),
+    // Exemplos JSON
+    SimpleJsonExample(),
+    JsonOdeExample(),
+    ProfessionalJsonExample(),
   ];
 
   @override

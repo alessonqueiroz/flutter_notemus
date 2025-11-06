@@ -103,7 +103,13 @@ class NoteRenderer extends BaseGlyphRenderer {
     );
   }
 
-  void render(Canvas canvas, Note note, Offset basePosition, Clef currentClef) {
+  void render(
+    Canvas canvas, 
+    Note note, 
+    Offset basePosition, 
+    Clef currentClef, {
+    bool renderOnlyNotehead = false,
+  }) {
     // MELHORIA: Usar StaffPositionCalculator unificado
     final staffPosition = StaffPositionCalculator.calculate(note.pitch, currentClef);
 
@@ -157,7 +163,8 @@ class NoteRenderer extends BaseGlyphRenderer {
     );
 
     // 🆕 Delegar para StemRenderer e FlagRenderer
-    if (note.duration.type != DurationType.whole && note.beam == null) {
+    // APENAS se não for renderOnlyNotehead E não tiver beam
+    if (!renderOnlyNotehead && note.duration.type != DurationType.whole && note.beam == null) {
       final stemUp = staffPosition <= 0;
       final beamCount = _getBeamCount(note.duration.type);
       

@@ -69,7 +69,12 @@ Flutter Notemus provides a comprehensive solution for rendering high-quality mus
 - **Ornaments**: Trills, turns, mordents, grace notes
 - **Dynamics**: pp to ff, crescendo, diminuendo, sforzando
 - **Chords**: Multi-note chords with proper stem alignment
-- **Beams**: Automatic beaming for note groups
+- **Beams**: Advanced beaming system with professional features:
+  - **Primary Beams**: Colcheias (8th notes) with automatic slope
+  - **Secondary Beams**: Semicolcheias, fusas, semifusas (up to 128th notes)
+  - **Broken Beams**: Fractional beams for dotted rhythms (♪. ♬)
+  - **Smart Breaking**: Follows "two levels above" rule (Behind Bars)
+  - **SMuFL Precision**: 0.5 SS thickness, 0.25 SS gap, perfect geometry
 - **Tuplets**: Triplets, quintuplets, septuplets, etc.
 - **Slurs & Ties**: Curved connectors between notes
 - **Ledger Lines**: Automatic for notes outside the staff

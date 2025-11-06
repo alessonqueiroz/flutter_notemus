@@ -93,6 +93,7 @@ class _MusicScoreState extends State<MusicScore> {
                     metadata: SmuflMetadata(),
                     theme: widget.theme,
                     staffSpace: widget.staffSpace,
+                    layoutEngine: layoutEngine,
                   ),
                 ),
               ),
@@ -127,12 +128,14 @@ class MusicScorePainter extends CustomPainter {
   final SmuflMetadata metadata;
   final MusicScoreTheme theme;
   final double staffSpace;
+  final LayoutEngine? layoutEngine;
 
   MusicScorePainter({
     required this.positionedElements,
     required this.metadata,
     required this.theme,
     required this.staffSpace,
+    this.layoutEngine,
   });
 
   @override
@@ -165,7 +168,7 @@ class MusicScorePainter extends CustomPainter {
         theme: theme,
       );
 
-      renderer.renderStaff(canvas, elements, size);
+      renderer.renderStaff(canvas, elements, size, layoutEngine: layoutEngine);
     }
   }
 
