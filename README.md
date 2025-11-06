@@ -260,6 +260,394 @@ class SimpleMusicExample extends StatelessWidget {
 
 ---
 
+## 📊 JSON Format Reference
+
+### Complete JSON Structure
+
+Flutter Notemus supports a **professional JSON format** for importing and exporting music notation. This format is compatible with the core music model and supports all musical elements.
+
+#### 🎼 Basic Structure
+
+```json
+{
+  "measures": [
+    {
+      "elements": [
+        // Musical elements here
+      ]
+    }
+  ]
+}
+```
+
+---
+
+### 📋 Valid Element Types
+
+#### 1️⃣ **Clef** (`"type": "clef"`)
+
+```json
+{"type": "clef", "clefType": "treble"}
+```
+
+**Valid `clefType` values:**
+- `"treble"` - Clave de Sol (G clef)
+- `"bass"` - Clave de Fá (F clef)
+- `"alto"` - Clave de Dó na 3ª linha (C clef on 3rd line)
+- `"tenor"` - Clave de Dó na 4ª linha (C clef on 4th line)
+- `"percussion"` - Clave de percussão
+- `"tab6"` - Tablatura de 6 cordas
+- `"tab4"` - Tablatura de 4 cordas
+
+---
+
+#### 2️⃣ **Key Signature** (`"type": "keySignature"`)
+
+```json
+{"type": "keySignature", "count": 2}
+```
+
+**`count` values:**
+- **Positive numbers** = sustenidos (sharps): `1` a `7`
+  - `1` = Sol Maior / Mi menor (G major / E minor)
+  - `2` = Ré Maior / Si menor (D major / B minor)
+  - `7` = Dó# Maior / Lá# menor (C# major / A# minor)
+- **Negative numbers** = bemóis (flats): `-1` a `-7`
+  - `-1` = Fá Maior / Ré menor (F major / D minor)
+  - `-2` = Sib Maior / Sol menor (Bb major / G minor)
+  - `-7` = Dób Maior / Láb menor (Cb major / Ab minor)
+- **Zero** = `0` = Dó Maior / Lá menor (C major / A minor)
+
+---
+
+#### 3️⃣ **Time Signature** (`"type": "timeSignature"`)
+
+```json
+{"type": "timeSignature", "numerator": 4, "denominator": 4}
+```
+
+**Fields:**
+- `"numerator"`: Número de tempos (beats per measure)
+- `"denominator"`: Valor da unidade de tempo (note value that gets one beat)
+
+**Common examples:**
+- `4/4` - Compasso quaternário simples
+- `3/4` - Compasso ternário (waltz)
+- `6/8` - Compasso composto
+- `2/2` - Alla breve
+
+---
+
+#### 4️⃣ **Note** (`"type": "note"`)
+
+```json
+{
+  "type": "note",
+  "pitch": {
+    "step": "F",
+    "octave": 5,
+    "alter": 0.0
+  },
+  "duration": {
+    "type": "quarter",
+    "dots": 1
+  }
+}
+```
+
+**Pitch fields:**
+- `"step"`: Nota diatônica (diatonic note name)
+  - Valid: `"C"`, `"D"`, `"E"`, `"F"`, `"G"`, `"A"`, `"B"`
+- `"octave"`: Oitava (octave number)
+  - Valid: `0` a `9` (C4 = middle C / Dó central)
+- `"alter"`: Alteração cromática (chromatic alteration)
+  - `0.0` = natural
+  - `1.0` = sustenido (sharp) #
+  - `-1.0` = bemol (flat) ♭
+  - `2.0` = dobrado sustenido (double sharp) 𝄪
+  - `-2.0` = dobrado bemol (double flat) 𝄫
+
+**Duration fields:**
+- `"type"`: Tipo de duração (duration type)
+  - Valid: `"whole"`, `"half"`, `"quarter"`, `"eighth"`, `"sixteenth"`, `"thirtySecond"`, `"sixtyFourth"`
+- `"dots"`: Pontos de aumento (augmentation dots) - **OPTIONAL**
+  - `0` = sem ponto (no dot)
+  - `1` = um ponto (single dot) - aumenta 50%
+  - `2` = dois pontos (double dot) - aumenta 75%
+
+**Examples:**
+
+Semínima pontuada (Dotted quarter note):
+```json
+{
+  "type": "note",
+  "pitch": {"step": "E", "octave": 5, "alter": 0.0},
+  "duration": {"type": "quarter", "dots": 1}
+}
+```
+
+Colcheia (Eighth note):
+```json
+{
+  "type": "note",
+  "pitch": {"step": "D", "octave": 5, "alter": 0.0},
+  "duration": {"type": "eighth"}
+}
+```
+
+---
+
+#### 5️⃣ **Rest** (`"type": "rest"`)
+
+```json
+{
+  "type": "rest",
+  "duration": {
+    "type": "quarter",
+    "dots": 0
+  }
+}
+```
+
+**Same duration fields as notes.**
+
+---
+
+#### 6️⃣ **Barline** (`"type": "barline"`)
+
+```json
+{"type": "barline", "barlineType": "final_"}
+```
+
+**Valid `barlineType` values:**
+- `"single"` - Barra simples (single barline) `|`
+- `"double"` - Barra dupla (double barline) `||`
+- `"final_"` - Barra final dupla (final double barline) `||` (thick)
+- `"heavy"` - Barra grossa (heavy barline)
+- `"repeatForward"` - Ritornelo à frente (repeat forward) `:||`
+- `"repeatBackward"` - Ritornelo atrás (repeat backward) `||:`
+- `"repeatBoth"` - Ritornelo ambos lados (repeat both) `:||:`
+- `"dashed"` - Barra tracejada (dashed barline)
+- `"tick"` - Tick barline
+- `"short_"` - Barra curta (short barline)
+- `"none"` - Sem barra (invisible barline)
+
+**⚠️ IMPORTANT:** Barlines são **OPCIONAIS** no JSON!
+- Se você **NÃO incluir** barlines, elas são adicionadas **automaticamente** entre compassos
+- Se você **INCLUIR** uma barline explícita no JSON, o sistema **respeita** e não duplica
+- **Recomendação:** Adicione apenas a **barra final** (`"final_"`) no último compasso
+
+---
+
+#### 7️⃣ **Dynamic** (`"type": "dynamic"`)
+
+```json
+{"type": "dynamic", "dynamicType": "forte"}
+```
+
+**Valid `dynamicType` values:**
+- **Básicas:** `"pp"`, `"p"`, `"mp"`, `"mf"`, `"f"`, `"ff"`
+- **Completas:** `"pianissimo"`, `"piano"`, `"mezzoPiano"`, `"mezzoForte"`, `"forte"`, `"fortissimo"`
+- **Especiais:** `"sforzando"`, `"crescendo"`, `"diminuendo"`
+
+**Com hairpin (crescendo/diminuendo):**
+```json
+{
+  "type": "dynamic",
+  "dynamicType": "crescendo",
+  "isHairpin": true,
+  "length": 120.0
+}
+```
+
+---
+
+#### 8️⃣ **Tempo** (`"type": "tempo"`)
+
+```json
+{
+  "type": "tempo",
+  "text": "Allegro",
+  "beatUnit": "quarter",
+  "bpm": 120
+}
+```
+
+**Fields:**
+- `"text"`: Texto descritivo (ex: "Allegro", "Andante")
+- `"beatUnit"`: Unidade de tempo (same as duration types)
+- `"bpm"`: Batidas por minuto (opcional)
+
+---
+
+#### 9️⃣ **Breath Mark** (`"type": "breath"`)
+
+```json
+{"type": "breath", "breathType": "comma"}
+```
+
+**Valid `breathType` values:**
+- `"comma"` - Vírgula de respiração (,)
+- `"tick"` - Tick mark (')
+- `"upbow"` - Arco para cima
+- `"caesura"` - Cesura (//)
+
+---
+
+#### 🔟 **Caesura** (`"type": "caesura"`)
+
+```json
+{"type": "caesura"}
+```
+
+Marca de pausa longa entre frases (//). Similar a breath, mas mais enfático.
+
+---
+
+#### 1️⃣1️⃣ **Chord** (`"type": "chord"`)
+
+```json
+{
+  "type": "chord",
+  "notes": [
+    {"step": "C", "octave": 4, "alter": 0.0},
+    {"step": "E", "octave": 4, "alter": 0.0},
+    {"step": "G", "octave": 4, "alter": 0.0}
+  ],
+  "duration": {"type": "quarter", "dots": 0},
+  "articulations": ["staccato", "accent"]
+}
+```
+
+**Fields:**
+- `"notes"`: Array de pitches (notes sem duration individual)
+- `"duration"`: Duration aplicada a todas as notas
+- `"articulations"`: Array opcional de articulações
+
+**Valid articulations:**
+- `"staccato"`, `"accent"`, `"tenuto"`, `"marcato"`
+
+---
+
+#### 1️⃣2️⃣ **Text** (`"type": "text"`)
+
+```json
+{
+  "type": "text",
+  "text": "dolce",
+  "textType": "expression",
+  "placement": "above",
+  "fontSize": 12.0
+}
+```
+
+**Valid `textType` values:**
+- `"expression"` - Expressões musicais (dolce, espressivo)
+- `"instruction"` - Instruções técnicas (pizz., arco)
+- `"lyrics"` - Letra da música
+- `"rehearsal"` - Marcas de ensaio (A, B, C)
+- `"chord"` - Cifras (C, Am, G7)
+- `"tempo"` - Indicações de andamento
+- `"title"`, `"subtitle"`, `"composer"` - Metadados
+
+**Valid `placement` values:**
+- `"above"` - Acima da pauta
+- `"below"` - Abaixo da pauta
+- `"inside"` - Dentro da pauta
+
+---
+
+### 📄 Complete Example: Ode à Alegria (8 compassos)
+
+```json
+{
+  "measures": [
+    {
+      "elements": [
+        {"type": "clef", "clefType": "treble"},
+        {"type": "keySignature", "count": 2},
+        {"type": "timeSignature", "numerator": 4, "denominator": 4},
+        {"type": "note", "pitch": {"step": "F", "octave": 5, "alter": 0.0}, "duration": {"type": "quarter"}},
+        {"type": "note", "pitch": {"step": "F", "octave": 5, "alter": 0.0}, "duration": {"type": "quarter"}},
+        {"type": "note", "pitch": {"step": "G", "octave": 5, "alter": 0.0}, "duration": {"type": "quarter"}},
+        {"type": "note", "pitch": {"step": "A", "octave": 5, "alter": 0.0}, "duration": {"type": "quarter"}}
+      ]
+    },
+    {
+      "elements": [
+        {"type": "note", "pitch": {"step": "A", "octave": 5, "alter": 0.0}, "duration": {"type": "quarter"}},
+        {"type": "note", "pitch": {"step": "G", "octave": 5, "alter": 0.0}, "duration": {"type": "quarter"}},
+        {"type": "note", "pitch": {"step": "F", "octave": 5, "alter": 0.0}, "duration": {"type": "quarter"}},
+        {"type": "note", "pitch": {"step": "E", "octave": 5, "alter": 0.0}, "duration": {"type": "quarter"}}
+      ]
+    },
+    {
+      "elements": [
+        {"type": "note", "pitch": {"step": "E", "octave": 5, "alter": 0.0}, "duration": {"type": "quarter", "dots": 1}},
+        {"type": "note", "pitch": {"step": "D", "octave": 5, "alter": 0.0}, "duration": {"type": "eighth"}},
+        {"type": "note", "pitch": {"step": "D", "octave": 5, "alter": 0.0}, "duration": {"type": "half"}},
+        {"type": "barline", "barlineType": "final_"}
+      ]
+    }
+  ]
+}
+```
+
+---
+
+### 💻 Usage in Code
+
+```dart
+import 'package:flutter_notemus/src/parsers/json_parser.dart';
+
+// Parse JSON string to Staff
+final jsonString = '{"measures": [...]}';
+final staff = JsonMusicParser.parseStaff(jsonString);
+
+// Render
+MusicScore(
+  staff: staff,
+  theme: MusicScoreTheme(
+    noteheadColor: Colors.black,
+    stemColor: Colors.black,
+    staffLineColor: Colors.black87,
+    barlineColor: Colors.black,
+  ),
+  staffSpace: 14.0,
+)
+```
+
+---
+
+### ✅ JSON Validation Rules
+
+1. **Measure Capacity:** O total de durações das notas não pode exceder a capacidade do compasso definida pela fórmula de compasso.
+   - Exemplo: Em 4/4, o total deve ser ≤ 1.0 (4 semínimas)
+
+2. **Required Fields:**
+   - Cada elemento deve ter `"type"`
+   - Notes requerem `"pitch"` e `"duration"`
+   - Pitch requer `"step"` e `"octave"`
+   - Duration requer `"type"`
+
+3. **Optional Fields:**
+   - `"dots"` na duration (padrão: 0)
+   - `"alter"` no pitch (padrão: 0.0)
+
+4. **Automatic Features:**
+   - Barlines automáticas entre compassos
+   - Barra final dupla no último compasso (se não especificada)
+   - Layout inteligente com quebras de linha
+
+---
+
+### 🔗 Related Documentation
+
+- Ver também: `PARSERS_GUIDE.md` para exemplos avançados
+- Exemplo completo: `example/professional_json_example.dart`
+
+---
+
 ## ⚠️ Measure Validation System
 
 **IMPORTANT:** Flutter Notemus includes a **strict measure validation system** that enforces musical correctness based on music theory rules.

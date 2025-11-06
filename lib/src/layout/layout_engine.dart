@@ -275,14 +275,20 @@ class LayoutEngine {
       
       _layoutMeasureCursor(measure, cursor, positionedElements, cursor.isFirstMeasureInSystem);
 
+      // Verificar se compasso ATUAL termina com barline
+      final currentMeasureEndsWithBarline = measure.elements.isNotEmpty && 
+          measure.elements.last is Barline;
+      
       // Verificar se PRÓXIMO compasso começa com barline (ex: repeat)
       final nextMeasure = (i < staff.measures.length - 1) ? staff.measures[i + 1] : null;
       final nextMeasureStartsWithBarline = nextMeasure != null && 
           nextMeasure.elements.isNotEmpty && 
           nextMeasure.elements.first is Barline;
       
-      // Adicionar barline apropriada SOMENTE se próximo compasso não começar com uma
-      if (!nextMeasureStartsWithBarline) {
+      // Adicionar barline apropriada SOMENTE se:
+      // 1. Próximo compasso não começar com uma
+      // 2. Compasso atual não terminar com uma
+      if (!nextMeasureStartsWithBarline && !currentMeasureEndsWithBarline) {
         if (isLast) {
           // BARRA DUPLA FINAL
           cursor.advance(measureEndPadding * staffSpace);
@@ -297,7 +303,7 @@ class LayoutEngine {
           cursor.addBarline(positionedElements);
         }
       } else {
-        // Próximo compasso começa com barline - apenas adicionar padding
+        // Compasso termina com barline OU próximo começa com barline - apenas adicionar padding
         cursor.advance(measureEndPadding * staffSpace);
       }
 
