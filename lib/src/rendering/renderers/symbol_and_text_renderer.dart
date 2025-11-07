@@ -67,10 +67,13 @@ class SymbolAndTextRenderer {
     }
 
     final glyphName = _getDynamicGlyph(dynamic.type);
-    // CORREÇÃO TIPOGRÁFICA SMuFL: Dinâmicas devem ficar 2.5 staff spaces abaixo da última linha
-    // CORREÇÃO LACERDA: Adicionar verticalOffset para evitar sobreposição
-    final dynamicY =
-        coordinates.getStaffLineY(1) + (coordinates.staffSpace * 2.5) + verticalOffset;
+
+    // ✅ CORREÇÃO: Usar metadata SMuFL em vez de valor hardcoded (2.5)
+    final dynamicsDistance =
+        metadata.getEngravingDefaultValue('dynamicsDistance') ?? 2.0;
+    final dynamicY = coordinates.getStaffLineY(1) +
+        (coordinates.staffSpace * dynamicsDistance) +
+        verticalOffset;
 
     if (glyphName != null) {
       // CORREÇÃO SMuFL: Escala de dinâmicas não deveria ser hardcoded (0.9)
@@ -102,10 +105,13 @@ class SymbolAndTextRenderer {
 
   void _renderHairpin(Canvas canvas, Dynamic dynamic, Offset basePosition, {double verticalOffset = 0.0}) {
     final length = dynamic.length ?? coordinates.staffSpace * 4;
-    // CORREÇÃO: Usar mesma posição Y que dinâmicas
-    // CORREÇÃO LACERDA: Adicionar verticalOffset para evitar sobreposição
-    final hairpinY =
-        coordinates.getStaffLineY(1) + (coordinates.staffSpace * 2.5) + verticalOffset;
+
+    // ✅ CORREÇÃO: Usar metadata SMuFL em vez de valor hardcoded (2.5)
+    final dynamicsDistance =
+        metadata.getEngravingDefaultValue('dynamicsDistance') ?? 2.0;
+    final hairpinY = coordinates.getStaffLineY(1) +
+        (coordinates.staffSpace * dynamicsDistance) +
+        verticalOffset;
     // CORREÇÃO TIPOGRÁFICA SMuFL: Altura recomendada de 0.75-1.0 staff spaces
     final height = coordinates.staffSpace * 0.75;
 

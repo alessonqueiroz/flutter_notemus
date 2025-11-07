@@ -70,25 +70,16 @@ class DotRenderer extends BaseGlyphRenderer {
     // - PAR (0, 2, 4, -2, -4...): nota está em uma LINHA
     // - ÍMPAR (1, 3, 5, -1, -3...): nota está em um ESPAÇO
     //
-    // ⚠️ VALORES EMPÍRICOS - Compensam a baseline correction aplicada nas noteheads
-    // A baseline correction move as noteheads para cima em ~2.5 staff spaces.
-    // Estes valores compensam esse offset para posicionar os pontos corretamente.
+    // ✅ CORREÇÃO: Removidos offsets empíricos (-2.5, 2.5, 2.0)
+    // Com a baseline correction removida, o posicionamento é direto e preciso.
 
     if (staffPosition.isEven) {
-      // Nota em LINHA: ponto vai para o ESPAÇO mais próximo do centro
-      if (staffPosition > 0) {
-        // Nota acima do centro → ponto vai para BAIXO
-        // Valor empírico que compensa baseline correction
-        return noteY + (coordinates.staffSpace * -2.5);
-      } else {
-        // Nota no centro ou abaixo → ponto vai para CIMA
-        // Valor empírico que compensa baseline correction
-        return noteY - (coordinates.staffSpace * 2.5);
-      }
+      // Nota em LINHA: ponto sobe meio staff space para o espaço acima
+      // (em Flutter, Y+ = baixo, então subtraímos para subir)
+      return noteY - (coordinates.staffSpace * 0.5);
     } else {
-      // Nota em ESPAÇO: ponto fica no MESMO espaço
-      // Valor empírico que compensa baseline correction
-      return noteY - (coordinates.staffSpace * 2.0);
+      // Nota em ESPAÇO: ponto fica na mesma posição Y da nota
+      return noteY;
     }
   }
 

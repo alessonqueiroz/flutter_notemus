@@ -26,15 +26,21 @@ class ArticulationRenderer extends BaseGlyphRenderer {
 
     final stemUp = staffPosition < 0;
     final articulationAbove = !stemUp;
+
+    // ✅ CORREÇÃO: Usar metadata SMuFL em vez de valores hardcoded (1.5/1.2)
+    // Valor padrão SMuFL para distância de articulações é ~0.5 staff spaces
+    final articulationDistance =
+        metadata.getEngravingDefaultValue('articulationDistance') ?? 0.5;
+
     final yOffset = articulationAbove
-        ? -coordinates.staffSpace * 1.5
-        : coordinates.staffSpace * 1.2;
+        ? -coordinates.staffSpace * articulationDistance
+        : coordinates.staffSpace * articulationDistance;
 
     for (final articulation in articulations) {
       final glyphName = _getArticulationGlyph(articulation, articulationAbove);
       if (glyphName != null) {
         final target = Offset(notePos.dx, notePos.dy + yOffset);
-        // Alinhar pelo opticalCenter quando disponível; sem subtrações indevidas
+        // Alinhar pelo opticalCenter quando disponível
         drawGlyphAlignedToAnchor(
           canvas,
           glyphName: glyphName,

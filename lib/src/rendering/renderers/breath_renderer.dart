@@ -24,11 +24,14 @@ class BreathRenderer {
 
   void render(Canvas canvas, Breath breath, Offset position) {
     final glyphName = _getGlyphName(breath.type);
-    
-    // Posicionar acima da pauta (como na imagem de referência)
-    final yOffset = -coordinates.staffSpace * 2.5;
+
+    // ✅ CORREÇÃO: Usar metadata SMuFL em vez de valor hardcoded (-2.5)
+    // Breath marks geralmente ficam acima da pauta com mesma distância de articulações
+    final breathDistance =
+        metadata.getEngravingDefaultValue('articulationDistance') ?? 0.5;
+    final yOffset = -coordinates.staffSpace * breathDistance;
     final renderPosition = Offset(position.dx, position.dy + yOffset);
-    
+
     glyphRenderer.drawGlyph(
       canvas,
       glyphName: glyphName,

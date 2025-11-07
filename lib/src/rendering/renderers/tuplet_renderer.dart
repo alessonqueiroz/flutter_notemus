@@ -33,7 +33,11 @@ class TupletRenderer {
     Clef currentClef,
   ) {
     double currentX = basePosition.dx;
-    final spacing = coordinates.staffSpace * 2.5;
+
+    // ✅ CORREÇÃO: Usar metadata SMuFL para espaçamento de notas em tuplets
+    // Valor padrão SMuFL para spacing é ~3.5 staff spaces (consistente com stemHeight)
+    final spacing = metadata.getEngravingDefaultValue('noteSpacing') ??
+        (coordinates.staffSpace * 3.5);
     final List<Offset> notePositions = [];
     final List<Note> notes = []; // Guardar referências às notas
     final clefString = _getClefString(currentClef);

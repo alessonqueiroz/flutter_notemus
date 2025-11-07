@@ -57,6 +57,9 @@ class ChordRenderer extends BaseGlyphRenderer {
         .map((n) => StaffPositionCalculator.calculate(n.pitch, currentClef))
         .toList();
 
+    // ✅ CORREÇÃO: Usar nota mais extrema (não média) para determinar direção da haste
+    // Regra musical padrão (Behind Bars, Ted Ross): a nota mais distante do centro
+    // determina a direção da haste. Se a nota extrema está acima, stem vai para baixo.
     final mostExtremePos = positions.reduce(
       (a, b) => a.abs() > b.abs() ? a : b,
     );
@@ -118,13 +121,9 @@ class ChordRenderer extends BaseGlyphRenderer {
     }
 
     if (chord.duration.type != DurationType.whole) {
-      // 🆕 Determinar direção da haste baseado na nota média
-      final sortedPositions = sortedNotes.map((note) => 
-        StaffPositionCalculator.calculate(note.pitch, currentClef)
-      ).toList();
-      final avgPosition = sortedPositions.reduce((a, b) => a + b) / sortedPositions.length;
-      final stemUp = avgPosition <= 0;
-      
+      // ✅ CORREÇÃO: stemUp já foi calculado corretamente acima usando nota extrema
+      // (linhas 60-66) - não recalcular aqui!
+
       // CORREÇÃO CRÍTICA: sortedNotes está em ordem DECRESCENTE de staffPosition
       // - sortedNotes.first = nota mais ALTA (maior staffPosition)
       // - sortedNotes.last = nota mais BAIXA (menor staffPosition)

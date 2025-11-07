@@ -187,28 +187,15 @@ abstract class BaseGlyphRenderer {
       // Desenho simples sem transformações
       final finalX = position.dx + xOffset;
       final finalY = position.dy + yOffset;
-      
-      // CORREÇÃO CRÍTICA: TextPainter não desenha pela baseline SMuFL!
-      // Para fontes SMuFL, o TextPainter desenha o glyph com o TOPO na coordenada Y especificada,
-      // não pela baseline. Precisamos compensar deslocando o glyph para cima em metade da altura.
-      // A baseline SMuFL está aproximadamente no centro vertical do bounding box renderizado.
-      // 
-      // EXCEÇÃO: Noteheads NÃO devem receber essa correção pois precisam alinhar
-      // exatamente com linhas suplementares!
-      double baselineCorrection = 0.0;
-      if (!options.centerVertically && !options.alignTop && !options.alignBottom 
-          && !options.disableBaselineCorrection) {
-        // Apenas aplicar correção se não estamos usando nenhum alinhamento vertical
-        // E se a correção não foi explicitamente desabilitada
-        // NO FLUTTER: Y+ = BAIXO, então SUBTRAÍMOS para fazer o glifo SUBIR
-        baselineCorrection = -textPainter.height * 0.5;
-      }
-      
-      final correctedY = finalY + baselineCorrection;
-      
+
+      // ✅ CORREÇÃO: Removida baseline correction incorreta que causava
+      // cascata de offsets empíricos em todo o codebase.
+      // SMuFL define anchors precisos que não precisam desta compensação.
+      // Os bounding boxes e anchors já fornecem posicionamento correto.
+
       textPainter.paint(
         canvas,
-        Offset(finalX, correctedY),
+        Offset(finalX, finalY),
       );
     }
 
@@ -421,13 +408,11 @@ class GlyphDrawOptions {
   }
 
   /// Opções padrão para cabeças de nota
-  /// CRÍTICO: A baseline correction é NECESSÁRIA para posicionar as notas corretamente!
-  /// Os anchors (stemUpSE, stemDownNW) são relativos à baseline SMuFL.
-  /// NOTA: Isso causa um offset nos pontos de aumento, que é compensado no DotRenderer.
+  /// Os anchors (stemUpSE, stemDownNW) são relativos aos bounding boxes SMuFL.
+  /// Não necessita correção adicional - os anchors já fornecem posicionamento correto.
   static const GlyphDrawOptions noteheadDefault = GlyphDrawOptions(
     centerHorizontally: false,
     centerVertically: false,
-    // disableBaselineCorrection: false (padrão) - NECESSÁRIO!
     trackBounds: true,
     collisionPriority: CollisionPriority.veryHigh,
   );

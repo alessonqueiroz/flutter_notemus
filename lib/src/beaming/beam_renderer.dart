@@ -223,11 +223,17 @@ class BeamRenderer {
     return group.leftX + (progress * (group.rightX - group.leftX - noteheadWidth));
   }
 
-  /// Estima posição Y de uma nota (temporário - deve vir do layout)
+  /// ✅ CORREÇÃO: Requer integração com layout engine para posição Y das notas
+  /// Esta função agora lança erro se noteYPositions não estiver disponível,
+  /// em vez de retornar aproximação que causa problemas tipográficos.
   double _estimateNoteY(dynamic note, AdvancedBeamGroup group) {
-    // Por enquanto, retornar uma posição padrão
-    // TODO: Integrar com sistema de layout real para obter Y das notas
-    return staffSpace * 3.0; // Linha central aproximada
+    // ❌ ERRO: Sistema de layout deve fornecer posições Y reais
+    // Retornar aproximação causa beams desenhados em posições incorretas
+    throw StateError(
+      'noteYPositions deve ser fornecido ao BeamRenderer. '
+      'O layout engine deve calcular e passar as posições Y reais das notas. '
+      'Aproximações causam problemas tipográficos.',
+    );
   }
 
   /// Calcula altura total necessária para múltiplos beams
