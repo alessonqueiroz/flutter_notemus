@@ -150,10 +150,10 @@ class ChordRenderer extends BaseGlyphRenderer {
       // A haste deve atravessar TODAS as notas do acorde!
       final noteheadGlyph = chord.duration.type.glyphName;
       final beamCount = _getBeamCount(chord.duration.type);
-      
+
       // Calcular comprimento proporcional usando positioning engine
       final customStemLength = noteRenderer.positioningEngine.calculateChordStemLength(
-        noteStaffPositions: sortedPositions,
+        noteStaffPositions: positions,
         stemUp: stemUp,
         beamCount: beamCount,
       );
