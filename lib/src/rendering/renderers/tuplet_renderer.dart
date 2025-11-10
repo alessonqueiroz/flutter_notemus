@@ -319,17 +319,10 @@ class TupletRenderer {
   ) {
     if (notePositions.length < 2 || notes.length < 2) return;
 
-    print('\n🎵 BEAM RENDER START');
-    print('  Número de notas: ${notes.length}');
-    print('  Staff Space: ${coordinates.staffSpace.toStringAsFixed(2)}');
-
     // ✅ CORREÇÃO P8: Usar altura padrão SMuFL (3.5 SS, não 2.5 SS)
     final stemHeight = coordinates.staffSpace * 3.5;
     final beamThickness =
         coordinates.staffSpace * 0.5; // SMuFL spec: 0.5 SS
-
-    print('  Stem Height: ${stemHeight.toStringAsFixed(2)}');
-    print('  Beam Thickness: ${beamThickness.toStringAsFixed(2)}');
 
     // ✅ CORREÇÃO P8: Calcular centro baseado em baseline do sistema
     // O baseline está em staffSpace * 5.0 (vindo do layout)
@@ -341,10 +334,6 @@ class TupletRenderer {
         averageY >
         staffCenterY; // Se média está abaixo do centro, haste vai para cima
 
-    print('  Staff Center Y: ${staffCenterY.toStringAsFixed(2)}');
-    print('  Average Note Y: ${averageY.toStringAsFixed(2)}');
-    print('  Stem Direction: ${stemUp ? "UP ↑" : "DOWN ↓"}');
-
     final paint = Paint()
       ..color = theme.stemColor
       ..style = PaintingStyle.fill;
@@ -354,42 +343,13 @@ class TupletRenderer {
     final firstStemTop = notePositions.first.dy + stemOffset;
     final lastStemTop = notePositions.last.dy + stemOffset;
 
-    print('  ┌─ CÁLCULO INICIAL:');
-    print(
-      '  │  stemOffset: ${stemOffset.toStringAsFixed(2)} (${stemUp ? "-" : "+"}${stemHeight.toStringAsFixed(2)})',
-    );
-    print('  │  First Note Y: ${notePositions.first.dy.toStringAsFixed(2)}');
-    print(
-      '  │  First Stem Top: ${notePositions.first.dy.toStringAsFixed(2)} + ${stemOffset.toStringAsFixed(2)} = ${firstStemTop.toStringAsFixed(2)}',
-    );
-    print('  │  Last Note Y: ${notePositions.last.dy.toStringAsFixed(2)}');
-    print(
-      '  │  Last Stem Top: ${notePositions.last.dy.toStringAsFixed(2)} + ${stemOffset.toStringAsFixed(2)} = ${lastStemTop.toStringAsFixed(2)}',
-    );
-
-    print('\n  ┌─ POSIÇÕES DAS NOTAS:');
-    for (int i = 0; i < notePositions.length; i++) {
-      print(
-        '  │  Nota ${i + 1}: (${notePositions[i].dx.toStringAsFixed(2)}, ${notePositions[i].dy.toStringAsFixed(2)}) - ${notes[i].pitch.step}${notes[i].pitch.octave}',
-      );
-    }
-    print('  │  First Stem Top: ${firstStemTop.toStringAsFixed(2)}');
-    print('  │  Last Stem Top: ${lastStemTop.toStringAsFixed(2)}');
-
     // Calcular slope do beam (ligeira inclinação se houver diferença de altura)
     final beamSlope =
         (lastStemTop - firstStemTop) /
         (notePositions.last.dx - notePositions.first.dx);
 
-    print('  └─ Beam Slope: ${beamSlope.toStringAsFixed(4)}');
-    print(
-      '  └─ Beam Slope Formula: beamY = ${firstStemTop.toStringAsFixed(2)} + (${beamSlope.toStringAsFixed(4)} * (x - ${notePositions.first.dx.toStringAsFixed(2)}))',
-    );
-
     double getBeamY(double x) {
-      final result = firstStemTop + (beamSlope * (x - notePositions.first.dx));
-      // Não imprimir aqui para evitar spam - já temos logs nas hastes
-      return result;
+      return firstStemTop + (beamSlope * (x - notePositions.first.dx));
     }
 
     // Determinar o número de beams baseado na duração
@@ -402,13 +362,8 @@ class TupletRenderer {
       beamCount = 4;
     }
 
-    print('  Duração: ${notes.first.duration.type}');
-    print('  Número de beams: $beamCount');
-
     // Desenhar cada nível de beam
     final beamSpacing = coordinates.staffSpace * 0.25;
-    print('\n  ┌─ BEAMS (${beamCount} níveis):');
-    print('  │  Beam Spacing: ${beamSpacing.toStringAsFixed(2)} (0.25 SS)');
     for (int level = 0; level < beamCount; level++) {
       // Beams adicionais devem ir na direção oposta às notas
       final yOffset = stemUp ? (level * beamSpacing) : -(level * beamSpacing);
@@ -418,18 +373,6 @@ class TupletRenderer {
       final baseEndY = getBeamY(endX);
       final startY = baseStartY + yOffset;
       final endY = baseEndY + yOffset;
-
-      print('  │  ═══ Beam ${level + 1} ═══');
-      print('  │    Level: ${level} (yOffset = ${yOffset.toStringAsFixed(2)})');
-      print('  │    Base Start Y: ${baseStartY.toStringAsFixed(2)}');
-      print('  │    Base End Y: ${baseEndY.toStringAsFixed(2)}');
-      print(
-        '  │    Final Start: (${startX.toStringAsFixed(2)}, ${startY.toStringAsFixed(2)})',
-      );
-      print(
-        '  │    Final End: (${endX.toStringAsFixed(2)}, ${endY.toStringAsFixed(2)})',
-      );
-      print('  │    Thickness: ${beamThickness.toStringAsFixed(2)}');
 
       // Desenhar beam como retângulo preenchido
       // Espessura na direção oposta às notas (se stem up, beam cresce para baixo)
@@ -449,30 +392,13 @@ class TupletRenderer {
       ..color = theme.stemColor
       ..strokeWidth = coordinates.staffSpace * 0.12;
 
-    print('\n  ┌─ HASTES (Detalhadas):');
     for (int i = 0; i < notePositions.length; i++) {
       final stemX = notePositions[i].dx;
       final noteY = notePositions[i].dy;
       final beamY = getBeamY(stemX);
-      final stemLength = (beamY - noteY).abs();
-
-      print('  │  ═══ Haste ${i + 1} ═══');
-      print('  │  Nota: ${notes[i].pitch.step}${notes[i].pitch.octave}');
-      print('  │  X: ${stemX.toStringAsFixed(2)}');
-      print('  │  Note Y: ${noteY.toStringAsFixed(2)}');
-      print('  │  Beam Y (calculated): ${beamY.toStringAsFixed(2)}');
-      print(
-        '  │  Stem Length: ${stemLength.toStringAsFixed(2)} px (${(stemLength / coordinates.staffSpace).toStringAsFixed(2)} SS)',
-      );
-      print('  │  Direction: ${stemUp ? "UP ↑" : "DOWN ↓"}');
-      print(
-        '  │  From Y: ${noteY.toStringAsFixed(2)} → To Y: ${beamY.toStringAsFixed(2)}',
-      );
 
       canvas.drawLine(Offset(stemX, noteY), Offset(stemX, beamY), stemPaint);
     }
-
-    print('🎵 BEAM RENDER END\n');
   }
 
   /// Aplica beams automáticos às notas do tuplet se forem beamable

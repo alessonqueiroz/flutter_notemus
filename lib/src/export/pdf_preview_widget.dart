@@ -1,5 +1,6 @@
 // lib/src/export/pdf_preview_widget.dart
 
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
@@ -59,7 +60,7 @@ class PdfPreviewWidget extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.share),
             tooltip: 'Share PDF',
-            onTap: () => _sharePdf(context),
+            onPressed: () => _sharePdf(context),
           ),
         ],
       ),

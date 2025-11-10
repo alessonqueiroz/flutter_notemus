@@ -47,34 +47,28 @@ class SlurRenderer {
     required Clef currentClef,
     Color color = Colors.black,
   }) {
-    print('      🎶 [SlurRenderer.renderSlurs] Processando ${slurGroups.length} slur groups');
-    
     for (final group in slurGroups.values) {
       if (group.length < 2) {
-        print('         ⚠️  Slur group muito pequeno (${group.length} notas), pulando...');
         continue;
       }
-      
+
       final startElement = positions[group.first];
       final endElement = positions[group.last];
-      
+
       if (startElement.element is! Note || endElement.element is! Note) {
         continue;
       }
-      
+
       final startNote = startElement.element as Note;
       final endNote = endElement.element as Note;
-      
-      print('         🎵 Slur: ${startNote.pitch.step}${startNote.pitch.octave} → ${endNote.pitch.step}${endNote.pitch.octave}');
-      
+
       // Calcular direção automática
       final direction = _calculateSlurDirection(
         startNote,
         endNote,
         currentClef,
       );
-      print('            Direção: ${direction == SlurDirection.up ? "ACIMA" : "ABAIXO"}');
-      
+
       // Calcular pontos de início e fim
       final startPoint = _calculateSlurEndpoint(
         startElement.position,
@@ -83,7 +77,7 @@ class SlurRenderer {
         isStart: true,
         above: direction == SlurDirection.up,
       );
-      
+
       final endPoint = _calculateSlurEndpoint(
         endElement.position,
         endNote,
@@ -91,24 +85,21 @@ class SlurRenderer {
         isStart: false,
         above: direction == SlurDirection.up,
       );
-      
+
       // Calcular curva usando SlurCalculator avançado
       final calculator = SlurCalculator(
         rules: rules,
         skylineCalculator: null, // TODO: integrar com skyline
       );
-      
+
       final curve = calculator.calculateSlur(
         startPoint: startPoint,
         endPoint: endPoint,
         placement: direction == SlurDirection.up,
         staffSpace: staffSpace,
       );
-      
+
       // Renderizar curva com espessura variável
-      print('            StartPoint: (${startPoint.dx.toStringAsFixed(1)}, ${startPoint.dy.toStringAsFixed(1)})');
-      print('            EndPoint: (${endPoint.dx.toStringAsFixed(1)}, ${endPoint.dy.toStringAsFixed(1)})');
-      
       _drawVariableThicknessCurve(
         canvas,
         curve,
@@ -116,7 +107,6 @@ class SlurRenderer {
         isSlur: true,
       );
     }
-    print('      ✅ [SlurRenderer.renderSlurs] Concluído!');  
   }
   
   /// Renderiza ligaduras de prolongamento (ties)
@@ -129,21 +119,17 @@ class SlurRenderer {
     required Clef currentClef,
     Color color = Colors.black,
   }) {
-    print('      🔗 [SlurRenderer.renderTies] Processando ${tieGroups.length} tie groups');
-    
     for (final group in tieGroups.values) {
       final startElement = positions[group.first];
       final endElement = positions[group.last];
-      
+
       if (startElement.element is! Note || endElement.element is! Note) {
         continue;
       }
-      
+
       final startNote = startElement.element as Note;
       final endNote = endElement.element as Note;
-      
-      print('         🔗 Tie: ${startNote.pitch.step}${startNote.pitch.octave} → ${endNote.pitch.step}${endNote.pitch.octave}');
-      
+
       // Ties seguem direção OPOSTA às hastes
       final staffPos = StaffPositionCalculator.calculate(
         startNote.pitch,
@@ -151,37 +137,32 @@ class SlurRenderer {
       );
       final stemUp = staffPos <= 0;
       final tieAbove = !stemUp;
-      print('            staffPos: $staffPos, stemUp: $stemUp, tieAbove: $tieAbove');
-      
+
       // Calcular pontos de início e fim (mais afastados das cabeças)
       final noteWidth = staffSpace * 1.18;
-      
+
       // ✅ USAR position.dy que JÁ é a posição Y absoluta da nota!
       final startNoteY = startElement.position.dy;
       final endNoteY = endElement.position.dy;
-      
-      print('            🐛 DEBUG startNoteY: $startNoteY, endNoteY: $endNoteY');
-      print('            🐛 DEBUG startElement.position: ${startElement.position}');
-      print('            🐛 DEBUG endElement.position: ${endElement.position}');
-      
+
       // ✅ Clearance discreto para ties (Behind Bars: 0.3-0.4 SS)
       // Ties devem ser próximos às cabeças, mas sem tocar
       final clearance = staffSpace * 0.35; // Reduzido para ties mais discretos
-      
+
       final startPoint = Offset(
         startElement.position.dx + noteWidth * 0.75,
-        startNoteY + (tieAbove 
+        startNoteY + (tieAbove
           ? -clearance  // Acima: subtrair clearance
           : clearance), // Abaixo: somar clearance
       );
-      
+
       final endPoint = Offset(
         endElement.position.dx + noteWidth * 0.25,
-        endNoteY + (tieAbove 
+        endNoteY + (tieAbove
           ? -clearance
           : clearance),
       );
-      
+
       // Calcular curva usando SlurCalculator
       final calculator = SlurCalculator(rules: rules);
       final curve = calculator.calculateTie(
@@ -190,11 +171,8 @@ class SlurRenderer {
         placement: tieAbove,
         staffSpace: staffSpace,
       );
-      
+
       // Renderizar tie com espessura variável
-      print('            StartPoint: (${startPoint.dx.toStringAsFixed(1)}, ${startPoint.dy.toStringAsFixed(1)})');
-      print('            EndPoint: (${endPoint.dx.toStringAsFixed(1)}, ${endPoint.dy.toStringAsFixed(1)})');
-      
       _drawVariableThicknessCurve(
         canvas,
         curve,
@@ -202,7 +180,6 @@ class SlurRenderer {
         isSlur: false,
       );
     }
-    print('      ✅ [SlurRenderer.renderTies] Concluído!');
   }
   
   /// Calcula direção automática do slur (acima ou abaixo)
@@ -265,26 +242,20 @@ class SlurRenderer {
     // - Slur na MESMA direção da haste → começa/termina na PONTA da haste (3.5 SS)
     // - Slur na direção OPOSTA → começa/termina próximo à cabeça da nota
     double yOffset;
-    String clearanceReason;
-    
+
     const double stemHeight = 3.5; // Altura padrão da haste (SMuFL)
     const double clearanceFromStem = 0.3; // Pequena margem após a haste
-    
+
     if (above && stemUp) {
       // Slur ACIMA + stem UP: ir até a PONTA da haste + margem
       yOffset = -(stemHeight + clearanceFromStem) * staffSpace;
-      clearanceReason = 'Slur ACIMA + stem UP → ponta da haste (${stemHeight}SS + ${clearanceFromStem}SS)';
     } else if (!above && !stemUp) {
       // Slur ABAIXO + stem DOWN: ir até a PONTA da haste + margem
       yOffset = (stemHeight + clearanceFromStem) * staffSpace;
-      clearanceReason = 'Slur ABAIXO + stem DOWN → ponta da haste (${stemHeight}SS + ${clearanceFromStem}SS)';
     } else {
       // Slur na direção OPOSTA da haste: próximo à cabeça da nota
       yOffset = staffSpace * 0.4 * (above ? -1 : 1);
-      clearanceReason = 'Direção oposta da haste → próximo à cabeça (0.4 SS)';
     }
-    
-    print('            🎯 Clearance: $clearanceReason (staffPos=$staffPos, stemUp=$stemUp, above=$above)');
     
     // Offset X: início à esquerda (35%), fim à direita (85%)
     // Fim mais à direita para não ultrapassar a nota
